@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieMethodsServer } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 export async function createClient() {
@@ -8,6 +8,8 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Annotated because the option is a union of the current and the
+      // deprecated cookie APIs, which blocks contextual typing.
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -22,7 +24,7 @@ export async function createClient() {
             // The middleware refreshes the session, so this is safe to ignore.
           }
         },
-      },
+      } satisfies CookieMethodsServer,
     },
   );
 }

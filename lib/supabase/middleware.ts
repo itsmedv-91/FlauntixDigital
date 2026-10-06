@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieMethodsServer } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 const PUBLIC_PATHS = ['/login', '/signup', '/auth', '/invite', '/forgot-password'];
@@ -14,6 +14,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
+    // Annotated because the option is a union of the current and the
+    // deprecated cookie APIs, which blocks contextual typing.
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -25,7 +27,7 @@ export async function updateSession(request: NextRequest) {
           response.cookies.set(name, value, options),
         );
       },
-    },
+    } satisfies CookieMethodsServer,
   });
 
   // Refreshes the auth token if expired. Must run before any redirect logic.

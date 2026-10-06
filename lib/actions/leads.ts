@@ -53,14 +53,21 @@ export async function updateLead(id: string, fd: FormData) {
   redirect('/leads');
 }
 
+/** Called from the drag-and-drop board, so it reports errors instead of throwing. */
 export async function moveLead(id: string, stage: LeadStage) {
   const ctx = await getContext();
-  assertRole(ctx, MANAGER_ROLES);
-  if (!STAGES.includes(stage)) throw new Error('Unknown stage.');
-  const { error } = await ctx.supabase.from('leads').update({ stage }).eq('id', id);
-  if (error) throw new Error(error.message);
-  await logActivity(ctx, 'lead', id, 'moved', { stage });
+  if (!MANAGER_ROLES.includes(ctx.role)) return { error: 'Only managers can move leads.' };
+  if (!STAGES.includes(stage)) return { error: 'Unknown stage.' };
+  const { data, error } = await ctx.supabase
+    .from('leads')
+    .update({ stage })
+    .eq('id', id)
+    .select('company')
+    .maybeSingle();
+  if (error || !data) return { error: error?.message ?? 'You cannot move this lead.' };
+  await logActivity(ctx, 'lead', id, 'moved', { company: data.company, stage });
   revalidatePath('/leads');
+  return { ok: true };
 }
 
 /** Turns a won lead into a client, copying over the contact and services. */
