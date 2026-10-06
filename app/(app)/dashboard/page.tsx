@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getContext } from '@/lib/auth';
 import { TASK_SELECT, TaskRow, type TaskListItem } from '@/components/task-bits';
 import { Avatar, Card, CardHeader, EmptyState, LinkButton, PageHeader, Stat } from '@/components/ui';
-import { displayName, formatDateTime, formatINR, formatMinutes, todayIST, weekStartIST } from '@/lib/utils';
+import { displayName, formatDate, formatDateTime, formatINR, formatMinutes, todayIST, weekStartIST } from '@/lib/utils';
 
 export const metadata = { title: 'Dashboard' };
 
@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   const weekStart = weekStartIST();
   const firstName = (ctx.profile.full_name ?? '').split(' ')[0] || 'there';
 
-  const [myTasks, overdue, approval, myWeek, clients, leads, activity, teamOpen] = await Promise.all([
+  const [myTasks, overdue, approval, myWeek, clients, leads, activity, teamOpen, contentApproval] = await Promise.all([
     sb.from('tasks').select(TASK_SELECT).eq('agency_id', ctx.agencyId).eq('assignee_id', ctx.user.id).neq('status', 'done')
       .order('due_date', { ascending: true, nullsFirst: false }).limit(8),
     sb.from('tasks').select('id', { count: 'exact', head: true }).eq('agency_id', ctx.agencyId).eq('assignee_id', ctx.user.id)
@@ -42,6 +42,12 @@ export default async function DashboardPage() {
       ? sb.from('tasks').select('assignee_id, due_date, assignee:profiles!tasks_assignee_id_fkey(id, full_name, email)')
           .eq('agency_id', ctx.agencyId).neq('status', 'done').not('assignee_id', 'is', null)
       : Promise.resolve({ data: [] }),
+    ctx.isStaff
+      ? sb.from('content_items')
+          .select('id, title, status, scheduled_date, updated_at, client:clients(id, name)')
+          .eq('agency_id', ctx.agencyId).eq('status', 'client_approval')
+          .order('updated_at', { ascending: true }).limit(6)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const tasks = (myTasks.data ?? []) as unknown as TaskListItem[];
@@ -49,6 +55,13 @@ export default async function DashboardPage() {
   const weekMinutes = (myWeek.data ?? []).reduce((s: number, e: { minutes: number | null }) => s + (e.minutes ?? 0), 0);
   const leadRows = (leads.data ?? []) as { estimated_value: number | null }[];
   const pipeline = leadRows.reduce((s, l) => s + (l.estimated_value ?? 0), 0);
+
+  const contentWaiting = (contentApproval.data ?? []) as unknown as {
+    id: string;
+    title: string;
+    scheduled_date: string | null;
+    client: { id: string; name: string } | null;
+  }[];
 
   const workload = new Map<string, { person: { full_name: string | null; email: string | null }; open: number; overdue: number }>();
   for (const t of (teamOpen.data ?? []) as unknown as { assignee_id: string; due_date: string | null; assignee: { full_name: string | null; email: string | null } }[]) {
@@ -104,6 +117,36 @@ export default async function DashboardPage() {
                 <div className="divide-y divide-zinc-100">{approvals.map((t) => <TaskRow key={t.id} task={t} />)}</div>
               ) : (
                 <p className="px-5 py-6 text-sm text-zinc-500">Nothing is waiting on a client right now.</p>
+              )}
+            </Card>
+          )}
+
+          {ctx.isStaff && (
+            <Card>
+              <CardHeader
+                title="Content with the client"
+                subtitle="Longest wait first"
+                action={<Link href="/content?status=client_approval" className="text-xs font-medium text-brand-600 hover:underline">View all</Link>}
+              />
+              {contentWaiting.length ? (
+                <ul className="divide-y divide-zinc-100">
+                  {contentWaiting.map((c) => (
+                    <li key={c.id} className="flex items-center gap-3 px-5 py-3">
+                      <Link href={`/content/${c.id}`} className="min-w-0 flex-1 text-sm font-medium text-ink hover:text-brand-600">
+                        <span className="block truncate">{c.title}</span>
+                        <span className="block truncate text-xs font-normal text-zinc-500">
+                          {c.client?.name ?? 'No client'}
+                          {c.scheduled_date ? ` · goes out ${formatDate(c.scheduled_date)}` : ''}
+                        </span>
+                      </Link>
+                      {c.scheduled_date && c.scheduled_date < today && (
+                        <span className="shrink-0 text-xs font-semibold text-coral-500">date passed</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-5 py-6 text-sm text-zinc-500">No content is sitting with a client.</p>
               )}
             </Card>
           )}

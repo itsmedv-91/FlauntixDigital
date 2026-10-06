@@ -19,6 +19,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const items: NavItem[] = [
     { href: '/dashboard', label: 'Dashboard', icon: 'home' },
     { href: '/tasks', label: 'Tasks', icon: 'tasks' },
+    // Freelancers see only the content assigned to them (enforced by RLS).
+    { href: '/content', label: 'Content', icon: 'content' },
     ...(ctx.isStaff
       ? ([
           { href: '/projects', label: 'Projects', icon: 'projects' },

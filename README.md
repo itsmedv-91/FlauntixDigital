@@ -15,10 +15,10 @@ agencies as SaaS.
 
 1. Go to [supabase.com](https://supabase.com) → **New project**. Pick a region close to you
    (Mumbai `ap-south-1` for India) and save the database password somewhere safe.
-2. Open **SQL Editor** → **New query**, paste the whole of
-   `supabase/migrations/0001_foundation.sql`, and hit **Run**.
-   The file is idempotent — re-running it is safe.
-   (With the Supabase CLI linked to the project, `supabase db push` does the same thing.)
+2. Open **SQL Editor** → **New query** and run each migration in `supabase/migrations/`
+   **in filename order** — `0001_foundation.sql`, then `0002_content.sql`. Paste one, hit
+   **Run**, then the next. Every file is idempotent, so re-running one is safe.
+   (With the Supabase CLI linked to the project, `supabase db push` does the whole set.)
 3. Open **Authentication → URL Configuration** and set:
    - **Site URL:** `http://localhost:3000` while developing, your real domain in production
    - **Redirect URLs:** add `http://localhost:3000/auth/callback` and
@@ -106,13 +106,15 @@ not just by the UI — a leaked API key still cannot read another agency's data.
 | **Projects** | Progress cards, per-project board, budget and time logged |
 | **Clients** | Retainers and renewal warnings, brand kit, contacts, encrypted credentials vault with an access log |
 | **Leads & CRM** | Pipeline kanban with value per stage, follow-up chasing, one-click convert to client |
+| **Content** | Month calendar with drag-to-reschedule, production pipeline board, client approval rounds with a full audit trail, revisions vs. scope |
 | **Time** | Week view Mon–Sun, per-day and per-client totals, timers and manual entries, team view for managers |
 | **Chat** | Realtime channels grouped by general / clients / departments |
 | **Team** | Members with workload and hours, roles and hourly cost, invites, deactivation |
 | **Settings** | Your profile, password, agency name |
 
-Later phases (content calendar with client approvals, client portal, GST invoicing, ads
-reporting, AI assistant) are listed in `CLAUDE.md` and are intentionally not started.
+Phase 2 is underway: the content calendar with client approvals is built. The client portal
+(magic-link sign-in for client contacts), GST invoicing and the brand/asset library are next,
+and `CLAUDE.md` records the design decisions already taken for each.
 
 ## Project layout
 
@@ -122,7 +124,14 @@ app/              auth pages and routes (login, signup, invite, /auth/callback)
 components/       UI primitives and the few client components (boards, timer, chat pane)
 lib/actions/      server actions, one file per module
 lib/              auth context, Supabase clients, crypto, types, constants, helpers
-supabase/         SQL migrations
+supabase/         SQL migrations, and tests that run them against a local Postgres
 ```
 
 Conventions worth knowing before you change anything are in `CLAUDE.md`.
+
+## Testing the database
+
+`supabase/tests/` runs the migrations against a throwaway local Postgres with a mocked
+Supabase `auth` schema and asserts on tenant isolation, role scoping and the approval RPCs —
+no Supabase project or network needed. See `supabase/tests/README.md`. Worth running before
+any schema change reaches a real database, and worth extending whenever you add a policy.

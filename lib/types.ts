@@ -11,6 +11,18 @@ export type TaskStatus = 'todo' | 'in_progress' | 'internal_review' | 'client_ap
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type ProjectStatus = 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
 export type ClientStatus = 'onboarding' | 'active' | 'paused' | 'churned';
+export type ContentStatus =
+  | 'idea'
+  | 'in_progress'
+  | 'internal_review'
+  | 'client_approval'
+  | 'changes_requested'
+  | 'approved'
+  | 'scheduled'
+  | 'published'
+  | 'archived';
+export type ContentFormat = 'static' | 'carousel' | 'reel' | 'story' | 'video' | 'blog' | 'email' | 'ad' | 'other';
+export type ApprovalDecision = 'pending' | 'approved' | 'changes_requested';
 
 export interface Agency {
   id: string;
@@ -155,6 +167,58 @@ export interface Message {
   channel_id: string;
   author_id: string | null;
   body: string;
+  created_at: string;
+}
+
+export interface ContentItem {
+  id: string;
+  agency_id: string;
+  client_id: string;
+  project_id: string | null;
+  task_id: string | null;
+  title: string;
+  caption: string | null;
+  hashtags: string[] | null;
+  platforms: string[] | null;
+  format: ContentFormat;
+  status: ContentStatus;
+  /** Plain YYYY-MM-DD, so the calendar grid needs no timezone maths. */
+  scheduled_date: string | null;
+  /** Plain HH:MM:SS. */
+  scheduled_time: string | null;
+  assignee_id: string | null;
+  asset_urls: string[] | null;
+  published_url: string | null;
+  published_at: string | null;
+  notes: string | null;
+  revision_count: number;
+  max_revisions: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentApproval {
+  id: string;
+  content_item_id: string;
+  round: number;
+  decision: ApprovalDecision;
+  requested_by: string | null;
+  requested_at: string;
+  decided_by_contact_id: string | null;
+  decided_by_profile_id: string | null;
+  on_behalf: boolean;
+  decided_at: string | null;
+  comment: string | null;
+}
+
+export interface ContentComment {
+  id: string;
+  content_item_id: string;
+  author_id: string | null;
+  author_contact_id: string | null;
+  body: string;
+  visible_to_client: boolean;
   created_at: string;
 }
 

@@ -1,5 +1,7 @@
 import type {
   ClientStatus,
+  ContentFormat,
+  ContentStatus,
   LeadStage,
   MemberRole,
   ProjectStatus,
@@ -31,6 +33,49 @@ export const LEAD_STAGES: { value: LeadStage; label: string }[] = [
   { value: 'won', label: 'Won' },
   { value: 'lost', label: 'Lost' },
 ];
+
+/**
+ * The content pipeline, in workflow order. `board` is false for statuses that
+ * should not take up a column on the pipeline board.
+ */
+export const CONTENT_STATUSES: { value: ContentStatus; label: string; tone: string; board: boolean }[] = [
+  { value: 'idea', label: 'Idea', tone: 'bg-zinc-100 text-zinc-700', board: true },
+  { value: 'in_progress', label: 'In progress', tone: 'bg-sky-100 text-sky-800', board: true },
+  { value: 'internal_review', label: 'Internal review', tone: 'bg-amber-100 text-amber-800', board: true },
+  { value: 'client_approval', label: 'With client', tone: 'bg-brand-100 text-brand-800', board: true },
+  { value: 'changes_requested', label: 'Changes requested', tone: 'bg-red-100 text-red-700', board: true },
+  { value: 'approved', label: 'Approved', tone: 'bg-emerald-50 text-emerald-700', board: true },
+  { value: 'scheduled', label: 'Scheduled', tone: 'bg-indigo-100 text-indigo-800', board: true },
+  { value: 'published', label: 'Published', tone: 'bg-emerald-100 text-emerald-800', board: true },
+  { value: 'archived', label: 'Archived', tone: 'bg-zinc-200 text-zinc-500', board: false },
+];
+
+export const CONTENT_FORMATS: { value: ContentFormat; label: string }[] = [
+  { value: 'static', label: 'Static post' },
+  { value: 'carousel', label: 'Carousel' },
+  { value: 'reel', label: 'Reel / short' },
+  { value: 'story', label: 'Story' },
+  { value: 'video', label: 'Long video' },
+  { value: 'blog', label: 'Blog / article' },
+  { value: 'email', label: 'Email / newsletter' },
+  { value: 'ad', label: 'Paid ad' },
+  { value: 'other', label: 'Other' },
+];
+
+export const CONTENT_PLATFORMS = [
+  'Instagram',
+  'Facebook',
+  'LinkedIn',
+  'YouTube',
+  'X (Twitter)',
+  'WhatsApp',
+  'Website / blog',
+  'Email',
+  'Google',
+];
+
+/** Statuses that mean the work is finished as far as production is concerned. */
+export const CONTENT_DONE: ContentStatus[] = ['approved', 'scheduled', 'published'];
 
 export const PROJECT_STATUSES: { value: ProjectStatus; label: string; tone: string }[] = [
   { value: 'planning', label: 'Planning', tone: 'bg-zinc-100 text-zinc-700' },

@@ -98,6 +98,34 @@ export function weekStartIST(offsetWeeks = 0) {
   return today.toISOString().slice(0, 10);
 }
 
+/** The current IST month as YYYY-MM. */
+export function monthIST() {
+  return todayIST().slice(0, 7);
+}
+
+/** Shifts a YYYY-MM month by whole months. */
+export function addMonths(month: string, n: number) {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
+}
+
+/** "October 2026" for a YYYY-MM month. */
+export function monthLabel(month: string) {
+  const [y, m] = month.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(y, m - 1, 1)),
+  );
+}
+
+/** First and last day of a YYYY-MM month, as YYYY-MM-DD. */
+export function monthRange(month: string) {
+  const [y, m] = month.split('-').map(Number);
+  return {
+    start: `${month}-01`,
+    end: new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10),
+  };
+}
+
 export function addDays(isoDate: string, days: number) {
   const d = new Date(isoDate + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);

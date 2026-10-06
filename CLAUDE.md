@@ -1,4 +1,4 @@
-# Flauntix HQ — agency platform (Phase 1: Foundation)
+# Flauntix HQ — agency platform (Phase 1 done, Phase 2 in progress)
 
 Internal operating platform for Flauntix Digital (6–8 person digital agency, 4–5 clients), designed multi-tenant so it can later be sold as SaaS to other agencies.
 
@@ -15,10 +15,18 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 - Env vars: see `.env.example`
 
 ## Database
-- Single migration: `supabase/migrations/0001_foundation.sql` (idempotent, safe to re-run).
+- Migrations, applied in order (all idempotent, safe to re-run):
+  - `0001_foundation.sql` — agencies, team, CRM, projects, tasks, time, chat, vault
+  - `0002_content.sql` — content calendar + client approvals
+- Tests: `supabase/tests/` runs the migrations against a local Postgres with a mocked
+  `auth` schema and asserts on RLS and the RPCs. See `supabase/tests/README.md`.
+  Add assertions there for any new policy or RPC.
 - Every business table has `agency_id`; RLS enforces tenant isolation and roles via
   `is_member / is_staff / is_manager / is_admin` (SECURITY DEFINER helpers).
-- RPCs: `create_agency(name)`, `accept_invitation(token)`, `invitation_preview(token)`.
+- RPCs: `create_agency(name)`, `accept_invitation(token)`, `invitation_preview(token)`,
+  `request_content_approval(item_id)`, `decide_content_approval(approval_id, decision, comment, contact_id)`.
+  The two content RPCs keep an item's status and its approval round in one transaction —
+  never set `content_items.status = 'client_approval'` by hand, go through the RPC.
 - Roles: owner > admin > manager > member > freelancer.
   - Freelancers: only tasks assigned to them (+ the client/project of those tasks), only `kind='general'` channels, no CRM/leads/vault.
   - Vault (`credentials`): managers and above only.
@@ -26,8 +34,14 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 - The migration and RLS were tested against Postgres 16 with a mocked `auth` schema: tenant isolation,
   freelancer scoping, self-promotion block and invite email matching all behave correctly.
 - FK embed names used in selects: `profiles!tasks_assignee_id_fkey`, `profiles!tasks_created_by_fkey`
-  (tasks has two FKs to profiles). Other tables have one FK to profiles, so plain `profiles(...)` works.
-- New schema changes go in a NEW migration file (`0002_*.sql`), never edit 0001 after it's applied.
+  (tasks has two FKs to profiles), `profiles!content_items_assignee_id_fkey`,
+  `profiles!content_items_created_by_fkey`, `profiles!content_approvals_requested_by_fkey`,
+  `profiles!content_approvals_decided_by_profile_id_fkey`. Other tables have one FK to
+  profiles, so plain `profiles(...)` works. A select string built by concatenation defeats
+  supabase-js inference — cast the row `as unknown as T`.
+- New schema changes go in a NEW migration file (`0003_*.sql`), never edit an applied one.
+- Enums need explicit casts inside a CASE (`'scheduled'::content_status`); a bare CASE
+  yields text and the update fails at runtime, not at deploy time.
 
 ## Code conventions
 - `lib/auth.ts` → `getContext()` (cached per request): user, profile, agencyId, role, `isAdmin/isManager/isStaff`, supabase client. Redirects to `/login` or `/onboarding` as needed. `getTeam()` returns agency members.
@@ -55,19 +69,39 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 - Chat: `/chat` redirects to #general; channel page with channels grouped by kind, "New channel" form, realtime message pane (last 100, Realtime INSERT subscription, browser-side insert, grouping, Enter to send)
 - Team: members table (workload, hours this week), role + hourly cost editing, deactivate/reactivate, invites with copyable link and revoke
 - Settings: profile, change password (landing page for password-reset links), agency name
+- Content calendar (Phase 2): month grid with drag-to-reschedule and an unscheduled tray,
+  pipeline board by status (dropping into "With client" sends for approval), filters, new/edit
+  form, detail page with the approval round trail, record-decision form, comments
+  (`visible_to_client`), duplicate, mark published, revisions-vs-scope warning
 - README.md: Supabase setup, env vars, first-run checklist, roles, Vercel deploy
 - Server actions for every module (`leads.ts`, `time.ts`, `team.ts`, `tasks.ts`, `clients.ts`, `projects.ts`, `vault.ts`, `auth.ts`)
 - `npm run typecheck` and `npm run build` both pass (24 routes)
 
 ### To do
-1. Run it against a real Supabase project and click through: signup → create agency → client →
+1. Run against a real Supabase project and click through: signup → create agency → client →
    project → task → drag on board → comment → timer → vault save/reveal → leads kanban drag →
-   convert lead → chat in two browsers (check Realtime arrives) → invite a second user in a
-   private window as a freelancer and confirm they only see their own task.
+   convert lead → content calendar drag → send for approval → record a decision → chat in two
+   browsers (check Realtime arrives) → invite a second user in a private window as a
+   freelancer and confirm they only see their own task and content.
 2. Email delivery for invites (currently the admin copies the link and shares it manually).
 
+### Phase 2 (in progress)
+Decisions taken with the user, to build on in this order:
+1. **Content calendar + client approvals — DONE.** `0002_content.sql`, `lib/actions/content.ts`,
+   month calendar with drag-to-reschedule, pipeline board, detail page with the approval trail.
+2. **Client portal** — magic-link sign-in (Supabase Auth OTP), access derived from
+   `client_contacts`, NOT a new `member_role`: external users must stay out of `memberships`
+   so the internal policies are untouched. Clients see their own content awaiting approval and
+   decide it themselves; `content_approvals` already carries `decided_by_contact_id` and
+   `on_behalf` for exactly this, and `content_comments.visible_to_client` gates the thread.
+3. **Invoicing with GST** — agency GSTIN on `agencies`, GSTIN + billing state on `clients`,
+   sequential per-financial-year invoice numbers, SAC codes, place of supply, and CGST+SGST
+   vs IGST chosen by comparing states. Printable invoice view. No e-invoicing/IRN: that is
+   only mandatory above ₹5 crore turnover and needs a paid GSP.
+4. **Brand / asset library** — Supabase Storage bucket per agency, rows linking assets to
+   clients, reusing `content_items.asset_urls` for the calendar side.
+
 ### Later phases (do not start without being asked)
-- Phase 2: content calendar with client approvals, client portal, invoicing with GST, brand/asset library
 - Phase 3: Meta/Google Ads data, automated client reports, media planning, profitability, HR/leave
 - Phase 4: AI assistant, automation builder, influencer & SEO, mobile apps, multi-agency SaaS launch
 Full feature list: the "Flauntix Digital Platform: Final Feature List" doc.
