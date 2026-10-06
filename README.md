@@ -57,7 +57,10 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Other scripts: `npm run typecheck`, `npm run build`, `npm run start`, `npm run lint`.
+Other scripts: `npm run typecheck`, `npm run build`, `npm run start`.
+
+> There is no ESLint config yet, so `npm run lint` drops into Next's interactive setup
+> prompt. `next build` does not run it, so this does not affect deploys.
 
 ## 4. First run checklist
 
