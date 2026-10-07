@@ -18,6 +18,7 @@ $PG -f supabase/migrations/0002_content.sql
 $PG -f supabase/migrations/0003_portal.sql
 $PG -f supabase/migrations/0004_invoicing.sql
 $PG -f supabase/migrations/0005_assets.sql
+$PG -f supabase/migrations/0006_profitability.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -30,6 +31,7 @@ psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/02_content_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/03_portal_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/04_invoicing_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/05_assets_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/06_profitability_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -125,6 +127,32 @@ here.
 - `replace_asset()` bumps the version, links the replacement to what it replaced, archives rather
   than deletes the old row, leaves the old file downloadable, writes the activity line, and is
   refused for another agency and for a freelancer
+
+## What 06_profitability_tests.sql covers
+
+These check the margin maths to the rupee on a worked month, and the two decisions that most
+affect the numbers.
+
+- Cost rates are stamped on insert from the member's rate, and left null when they have none
+- **A pay rise does not rewrite last month's margin**: after raising a member's rate, May's
+  labour cost and margin are unchanged, while June's new entry is stamped at the new rate
+- Revenue is the taxable value, not the invoice total — GST is excluded; drafts and cancelled
+  invoices are not revenue
+- Labour cost includes the non-billable client hour, while `billable_hours` excludes it
+- Expenses total, rebilled expenses are reported separately, and total cost is labour + expenses
+- Margin, margin percent and effective hourly rate; margin percent is null with no revenue
+- `expected_retainer` is the monthly figure times the months the range touches (1 for a month,
+  3 for a quarter)
+- Unpriced time is reported as hours and costs zero, and `unpriced_contributors()` names the
+  person — the report must not quietly treat free labour as profit
+- **IST decides the month**: 20:00 UTC on 30 April is 01:30 IST on 1 May and counts in May;
+  19:00 UTC on 31 May is 00:30 IST on 1 June and counts in June
+- The agency bottom line: revenue less the cost of serving clients less overhead (time and
+  expenses with no client), with overhead hours separated from client hours
+- `set_hourly_cost()` can price the owner where a direct update cannot, refuses a negative rate,
+  refuses a member and another agency, leaves roles untouched, and writes the activity line
+- Members, freelancers, portal clients and other agencies cannot read expenses or run either
+  report; a backwards date range is refused
 
 ## Why mock `auth`
 

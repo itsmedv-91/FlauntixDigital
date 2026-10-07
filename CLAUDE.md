@@ -1,4 +1,4 @@
-# Flauntix HQ — agency platform (Phases 1 and 2 done)
+# Flauntix HQ — agency platform (Phases 1 and 2 done, Phase 3 in progress)
 
 Internal operating platform for Flauntix Digital (6–8 person digital agency, 4–5 clients), designed multi-tenant so it can later be sold as SaaS to other agencies.
 
@@ -11,7 +11,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 ## Commands
 - `npm install` then `npm run dev`
 - `npm run typecheck` and `npm run build` must pass before calling anything done
-- `npm run test:gst` runs the GST helper tests; `supabase/tests/` runs the SQL ones
+- `npm test` runs the pure-helper tests (`test:gst`, `test:dates`); `supabase/tests/` runs the SQL ones
 - `npm run gen:key` prints a value for `CREDENTIALS_ENCRYPTION_KEY`
 - Env vars: see `.env.example`
 
@@ -22,6 +22,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   - `0003_portal.sql` — client portal (magic-link access for client contacts)
   - `0004_invoicing.sql` — GST invoicing (tax invoices, payments, numbering)
   - `0005_assets.sql` — brand / asset library (one private Storage bucket)
+  - `0006_profitability.sql` — cost rates, expenses, margin reporting
 - Tests: `supabase/tests/` runs the migrations against a local Postgres with a mocked
   `auth` schema and asserts on RLS and the RPCs. See `supabase/tests/README.md`.
   Add assertions there for any new policy or RPC.
@@ -34,7 +35,9 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   `cancel_invoice(inv_id, reason)`, `recalc_invoice(inv_id)`,
   `refresh_invoice_payment_status(inv_id)`, `replace_asset(old_id, new_id)`, plus helpers
   `auth_email()`, `portal_client_ids()`, `is_portal_user()`, `fy_of(date)`,
-  `gst_state_name(code)`, `path_agency(path)`.
+  `gst_state_name(code)`, `path_agency(path)`, `client_profitability(agency, from, to)`,
+  `agency_profitability(agency, from, to)`, `unpriced_contributors(agency, from, to)`,
+  `set_hourly_cost(member, cost)`.
   The two content RPCs keep an item's status and its approval round in one transaction —
   never set `content_items.status = 'client_approval'` by hand, go through the RPC.
 - Roles: owner > admin > manager > member > freelancer.
@@ -109,7 +112,30 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
     `content_items.asset_urls`.
   - `replace_asset()` archives the old row and bumps the version, so "the current logo" is
     unambiguous while old versions stay downloadable.
-- New schema changes go in a NEW migration file (`0006_*.sql`), never edit an applied one.
+- **Profitability.** The margin maths lives in SQL (`client_profitability`, `agency_profitability`),
+  so there is one tested definition of a margin:
+  - **Cost rates are snapshotted onto `time_entries.cost_rate`** by a before-insert trigger.
+    Joining live to `memberships.hourly_cost` would silently rewrite every past month's margin
+    the day somebody gets a raise. Never "fix" historic costs by re-stamping them.
+  - **Non-billable client time is still a cost.** `billable` decides whether you could invoice
+    the hour, not whether it cost you. A client eating unbillable rework must look unprofitable.
+  - Revenue is `invoices.taxable_total` (GST is collected tax, not revenue) for invoices issued
+    in the period, excluding drafts and cancelled ones.
+  - Hours/costs are bucketed by `started_at` **in IST**; revenue by `issue_date`. April's work
+    invoiced in May lands in May — the normal accrual gap, which `expected_retainer` surfaces.
+  - Time or expenses with `client_id is null` are agency overhead, not a client cost.
+  - A `rebilled` expense is still a cost; the invoice line recovering it is revenue, so a
+    pass-through nets to zero instead of flattering the margin.
+  - Unpriced time (`cost_rate is null`) costs zero, which would quietly flatter every margin —
+    `unpriced_contributors()` exists so the UI can name the people and demand a rate.
+  - `set_hourly_cost()` exists because `memberships_update` is admin-only and refuses owner
+    rows, so a direct write could never price the owner — the most expensive person in the
+    agency. It updates that one column and cannot touch roles.
+  - **Known gap, not yet fixed:** `memberships_select` is `is_member`, so any member can read
+    everyone's `hourly_cost` through the API even though only managers see it in the UI. Fixing
+    it properly means moving the column to a manager-only table (RLS is row-level, not
+    column-level). Worth doing before this is sold as SaaS.
+- New schema changes go in a NEW migration file (`0007_*.sql`), never edit an applied one.
 - Enums need explicit casts inside a CASE (`'scheduled'::content_status`); a bare CASE
   yields text and the update fails at runtime, not at deploy time.
 
@@ -158,9 +184,13 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   what needs the client, approve / request-changes form writing a real approval round, client
   comment thread, per-contact access toggle on the client's Contacts tab, client comments badged
   on the internal content page
+- Profitability (Phase 3): per-client margin and the agency bottom line for a month, FY quarter,
+  financial year or custom range; expenses with rebill tracking; cost-rate editing including the
+  owner's; a warning naming anyone whose time is costed at zero
 - README.md: Supabase setup, env vars, first-run checklist, roles, portal setup, Vercel deploy
 - Server actions for every module (`leads.ts`, `time.ts`, `team.ts`, `tasks.ts`, `clients.ts`, `projects.ts`, `vault.ts`, `auth.ts`)
-- `npm run typecheck`, `npm run build` (34 routes), `npm run test:gst` and all four SQL suites pass
+- `npm run typecheck`, `npm run build` (35 routes), `npm test` and all five SQL suites pass
+  (258 SQL assertions, 44 helper checks)
 
 ### To do
 1. Run against a real Supabase project and click through: signup → create agency → client →
@@ -191,7 +221,22 @@ Decisions taken with the user, to build on in this order:
 
 **Phase 2 is complete.** Do not start Phase 3 without being asked.
 
+### Phase 3 (in progress)
+1. **Profitability — DONE.** `0006_profitability.sql`, `lib/actions/expenses.ts`,
+   `app/(app)/profitability/`. See the Database section for the rules that define a margin.
+2. **Meta / Google Ads data — deferred by decision.** Google Ads needs a developer token behind
+   an approval process; Meta needs an app with business verification and `ads_read`. Neither is
+   obtainable from here. When it happens: a `ad_spend` table keyed on (agency, client, platform,
+   month) with a unique constraint so a re-sync upserts rather than duplicates, populated either
+   by API or by CSV import from Ads Manager, then added to `client_profitability` as another
+   cost line (and as revenue where the spend is rebilled). The expenses table already handles
+   fronted ad spend in the meantime.
+3. **Automated client reports** — not started. Would pull content published, approvals,
+   tasks delivered, hours and invoices for a period; deliver as a print view like
+   `/invoices/[id]/print` and optionally surface in the portal.
+4. **Media planning** — not started.
+5. **HR / leave** — not started.
+
 ### Later phases (do not start without being asked)
-- Phase 3: Meta/Google Ads data, automated client reports, media planning, profitability, HR/leave
 - Phase 4: AI assistant, automation builder, influencer & SEO, mobile apps, multi-agency SaaS launch
 Full feature list: the "Flauntix Digital Platform: Final Feature List" doc.

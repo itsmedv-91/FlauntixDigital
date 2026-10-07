@@ -151,6 +151,19 @@ export const ASSET_BUCKET = 'assets';
 /** Matches the bucket's own file_size_limit in 0005_assets.sql. */
 export const ASSET_MAX_BYTES = 100 * 1024 * 1024;
 
+/** Cost categories a digital agency actually books against a client. */
+export const EXPENSE_CATEGORIES = [
+  'Ad spend',
+  'Freelancer / contractor',
+  'Software & tools',
+  'Stock & assets',
+  'Shoot / production',
+  'Printing & production',
+  'Travel',
+  'Influencer fees',
+  'Other',
+];
+
 export const MANAGER_ROLES: MemberRole[] = ['owner', 'admin', 'manager'];
 export const ADMIN_ROLES: MemberRole[] = ['owner', 'admin'];
 export const STAFF_ROLES: MemberRole[] = ['owner', 'admin', 'manager', 'member'];

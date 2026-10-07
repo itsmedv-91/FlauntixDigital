@@ -31,7 +31,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ] as NavItem[])
       : []),
     // Billing is managers and above, the same as the invoices RLS policy.
-    ...(ctx.isManager ? ([{ href: '/invoices', label: 'Invoices', icon: 'invoices' }] as NavItem[]) : []),
+    ...(ctx.isManager
+      ? ([
+          { href: '/invoices', label: 'Invoices', icon: 'invoices' },
+          { href: '/profitability', label: 'Profitability', icon: 'margin' },
+        ] as NavItem[])
+      : []),
     { href: '/time', label: 'Time', icon: 'time' },
     { href: '/chat', label: 'Chat', icon: 'chat' },
     ...(ctx.isStaff ? ([{ href: '/team', label: 'Team', icon: 'team' }] as NavItem[]) : []),

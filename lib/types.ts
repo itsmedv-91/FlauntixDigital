@@ -357,6 +357,55 @@ export interface Asset {
   updated_at: string;
 }
 
+export interface Expense {
+  id: string;
+  agency_id: string;
+  /** Null means an agency overhead cost rather than a client cost. */
+  client_id: string | null;
+  project_id: string | null;
+  incurred_on: string;
+  category: string;
+  description: string;
+  amount: number;
+  vendor: string | null;
+  /** Passed on to the client; still a cost, offset by the invoice line. */
+  rebilled: boolean;
+  invoice_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+/** One row of client_profitability(). Every figure is computed in SQL. */
+export interface ClientMargin {
+  client_id: string;
+  client_name: string;
+  client_status: ClientStatus;
+  revenue: number;
+  expected_retainer: number;
+  labour_cost: number;
+  expense_cost: number;
+  rebilled_expense: number;
+  total_cost: number;
+  margin: number;
+  margin_pct: number | null;
+  hours: number;
+  billable_hours: number;
+  effective_rate: number | null;
+  unpriced_hours: number;
+}
+
+/** The single row agency_profitability() returns. */
+export interface AgencyMargin {
+  revenue: number;
+  direct_cost: number;
+  overhead_cost: number;
+  overhead_hours: number;
+  margin: number;
+  margin_pct: number | null;
+  client_hours: number;
+  unpriced_hours: number;
+}
+
 export interface ActivityItem {
   id: number;
   actor_id: string | null;

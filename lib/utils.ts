@@ -140,6 +140,32 @@ export function monthRange(month: string) {
   };
 }
 
+/** The Indian financial year containing a date: 1 April to 31 March. */
+export function fyRange(isoDate: string) {
+  const [y, m] = isoDate.split('-').map(Number);
+  const startYear = m >= 4 ? y : y - 1;
+  return { start: `${startYear}-04-01`, end: `${startYear + 1}-03-31` };
+}
+
+/**
+ * The financial-year quarter containing a date. Indian FY quarters run
+ * Apr–Jun, Jul–Sep, Oct–Dec, Jan–Mar, which is not the calendar grouping.
+ */
+export function fyQuarterRange(isoDate: string) {
+  const [y, m] = isoDate.split('-').map(Number);
+  const fyIndex = (m - 4 + 12) % 12; // April = 0
+  const quarter = Math.floor(fyIndex / 3);
+  const startYear = m >= 4 ? y : y - 1;
+  const start = new Date(Date.UTC(startYear, 3 + quarter * 3, 1));
+  // Day 0 of the following month is the last day of this one.
+  const end = new Date(Date.UTC(startYear, 3 + quarter * 3 + 3, 0));
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+    label: `Q${quarter + 1} FY${String(startYear % 100).padStart(2, '0')}-${String((startYear + 1) % 100).padStart(2, '0')}`,
+  };
+}
+
 export function addDays(isoDate: string, days: number) {
   const d = new Date(isoDate + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);

@@ -59,8 +59,9 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Other scripts: `npm run typecheck`, `npm run build`, `npm run start`, `npm run test:gst`
-(the GST helper tests — GSTIN check digit, financial year, amount in words).
+Other scripts: `npm run typecheck`, `npm run build`, `npm run start`, and `npm test`
+(the pure-helper tests — GSTIN check digit, amount in words, financial-year and FY-quarter
+dates). The SQL tests live in `supabase/tests/`; see the README there.
 
 > There is no ESLint config yet, so `npm run lint` drops into Next's interactive setup
 > prompt. `next build` does not run it, so this does not affect deploys.
@@ -146,6 +147,34 @@ the reel they're editing and nothing else. Portal clients see no assets at all.
 **Not built, deliberately:** image thumbnails via Supabase's transform API (it's a paid add-on,
 so the grid previews originals), bulk upload, and showing brand assets in the client portal.
 
+## Reading the profitability report
+
+**Profitability** answers which clients actually make money, from data already in the platform:
+logged time priced at each person's cost rate, invoices, and expenses you record.
+
+Set up once: give everyone an **hourly cost** (the panel on the right of the page does it,
+including the owner's). Anyone without one has their time costed at **zero**, which makes every
+margin look better than it is — the page warns you and names them rather than hiding it.
+
+Then record costs that are not time, on the same page: ad spend you fronted, freelancer
+invoices, tools, production. Leave the client empty for agency overhead.
+
+Things worth understanding before you act on the numbers:
+
+- **A pay rise does not change last month's margin.** Each time entry stores the cost rate it was
+  logged at, so history stays put. New rates apply to new time only.
+- **Non-billable client time still counts as a cost.** The billable flag decides whether you
+  *could* invoice the hour, not whether it cost you — so a client who eats forty hours of
+  unbillable rework shows up as unprofitable, which is the point.
+- **Revenue excludes GST** and counts invoices by their issue date. Drafts and cancelled invoices
+  are not revenue.
+- **April's work invoiced in May lands in May.** Hours are counted when the work happened, revenue
+  when you invoiced. On a single month that gap can look odd; the *under retainer* badge flags a
+  client you have not billed yet, and quarter or FY views wash it out.
+- **Rebilled costs net to zero.** Ad spend you front and recover appears as both a cost and (via
+  the invoice line) revenue, so it doesn't flatter the margin.
+- Profitability is **managers and above**, like invoices and the vault.
+
 ## Raising a GST invoice
 
 Before the first invoice, fill in **Settings → Billing profile**: your registered legal name,
@@ -204,14 +233,15 @@ advice — have your CA look at your first invoice.
 | **Client portal** | Magic-link sign-in for client contacts, no passwords; they approve or request changes on their own content and message the team |
 | **Invoices** | GST tax invoices with per-line CGST+SGST or IGST, per-financial-year numbering, payments and balances, printable Rule 46 document |
 | **Assets** | Brand library in private storage: logos, brand guides, fonts and creatives per client, versioned, with permanent links you can paste into a content item |
+| **Profitability** | Per-client margin and the agency bottom line for any period, from logged time at cost, invoices and recorded expenses |
 | **Time** | Week view Mon–Sun, per-day and per-client totals, timers and manual entries, team view for managers |
 | **Chat** | Realtime channels grouped by general / clients / departments |
 | **Team** | Members with workload and hours, roles and hourly cost, invites, deactivation |
 | **Settings** | Your profile, password, agency name |
 
 Phase 2 is complete: content calendar with client approvals, client portal, GST invoicing and
-the brand/asset library. Phase 3 (ads data, automated client reports, profitability) and Phase 4
-are listed in `CLAUDE.md` and intentionally not started.
+the brand/asset library. Phase 3 has started with profitability; ads data, client reports, media
+planning and HR/leave are listed in `CLAUDE.md` with the design decisions already taken.
 
 ## Project layout
 
