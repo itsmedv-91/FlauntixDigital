@@ -119,6 +119,33 @@ it. Magic links expire after an hour.
 Revoking access is the same toggle: press **Revoke portal** and their next sign-in attempt is
 refused. Their past approvals stay on the record.
 
+## The asset library
+
+Files live in one **private** Supabase Storage bucket called `assets`, with every file namespaced
+by agency: `{agency_id}/{client_id}/{uuid}.{ext}`. Migration `0005_assets.sql` creates the bucket
+automatically when you run it — but check **Storage → assets** exists in the Supabase dashboard
+afterwards, because the migration only prints a notice if the insert is refused rather than
+failing the whole run.
+
+- **Upload** from **Assets → Add an asset**. Pick a client, or leave it as *Agency-wide* for your
+  own templates and fonts. Up to 100 MB per file.
+- **Uploads go from the browser straight to Storage**, never through the app server — Server
+  Actions are capped at 2 MB and agencies upload video.
+- **Permanent links.** Signed URLs expire within the hour, so don't copy one. Each asset has a
+  **Copy link** that gives `/assets/<id>/download`, which signs a fresh URL on every click and
+  re-checks who you are. That is the link to paste into a content item's *creative links*.
+- **New versions.** "Upload new version" on an asset archives the old one and bumps the version
+  number, so *the current logo* is unambiguous while last year's stays downloadable.
+- **Archive vs delete.** Archiving hides an asset from the library and keeps the file; deleting
+  removes the file for good and is managers only.
+
+Who sees what: staff see the whole library. A **freelancer** sees agency-wide assets plus the
+assets of clients they actually have a task or content item for — so they can get the logo for
+the reel they're editing and nothing else. Portal clients see no assets at all.
+
+**Not built, deliberately:** image thumbnails via Supabase's transform API (it's a paid add-on,
+so the grid previews originals), bulk upload, and showing brand assets in the client portal.
+
 ## Raising a GST invoice
 
 Before the first invoice, fill in **Settings → Billing profile**: your registered legal name,
@@ -176,14 +203,15 @@ advice — have your CA look at your first invoice.
 | **Content** | Month calendar with drag-to-reschedule, production pipeline board, client approval rounds with a full audit trail, revisions vs. scope |
 | **Client portal** | Magic-link sign-in for client contacts, no passwords; they approve or request changes on their own content and message the team |
 | **Invoices** | GST tax invoices with per-line CGST+SGST or IGST, per-financial-year numbering, payments and balances, printable Rule 46 document |
+| **Assets** | Brand library in private storage: logos, brand guides, fonts and creatives per client, versioned, with permanent links you can paste into a content item |
 | **Time** | Week view Mon–Sun, per-day and per-client totals, timers and manual entries, team view for managers |
 | **Chat** | Realtime channels grouped by general / clients / departments |
 | **Team** | Members with workload and hours, roles and hourly cost, invites, deactivation |
 | **Settings** | Your profile, password, agency name |
 
-Phase 2 is underway: the content calendar with client approvals, the client portal and GST
-invoicing are built. The brand/asset library is next, and `CLAUDE.md` records the design
-decisions already taken for it.
+Phase 2 is complete: content calendar with client approvals, client portal, GST invoicing and
+the brand/asset library. Phase 3 (ads data, automated client reports, profitability) and Phase 4
+are listed in `CLAUDE.md` and intentionally not started.
 
 ## Project layout
 

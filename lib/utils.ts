@@ -77,6 +77,20 @@ export function formatINR(n: number | null | undefined) {
   }).format(n);
 }
 
+/** "4.2 MB" — file sizes for the asset library. */
+export function formatBytes(bytes: number | null | undefined) {
+  if (bytes === null || bytes === undefined) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
+
 export function formatMinutes(mins: number | null | undefined) {
   const m = Math.max(0, Math.round(mins ?? 0));
   const h = Math.floor(m / 60);

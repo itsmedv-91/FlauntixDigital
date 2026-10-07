@@ -24,6 +24,16 @@ export type ContentStatus =
 export type ContentFormat = 'static' | 'carousel' | 'reel' | 'story' | 'video' | 'blog' | 'email' | 'ad' | 'other';
 export type ApprovalDecision = 'pending' | 'approved' | 'changes_requested';
 export type InvoiceStatus = 'draft' | 'issued' | 'partly_paid' | 'paid' | 'cancelled';
+export type AssetKind =
+  | 'logo'
+  | 'brand_guide'
+  | 'font'
+  | 'colour_palette'
+  | 'image'
+  | 'video'
+  | 'document'
+  | 'template'
+  | 'other';
 
 export interface Agency {
   id: string;
@@ -323,6 +333,28 @@ export interface InvoicePayment {
   reference: string | null;
   note: string | null;
   created_at: string;
+}
+
+export interface Asset {
+  id: string;
+  agency_id: string;
+  /** Null for an agency-level asset (our own templates, fonts). */
+  client_id: string | null;
+  project_id: string | null;
+  name: string;
+  description: string | null;
+  kind: AssetKind;
+  /** Path inside the private `assets` bucket; begins with the agency id. */
+  storage_path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  tags: string[] | null;
+  version: number;
+  replaces_id: string | null;
+  archived_at: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ActivityItem {

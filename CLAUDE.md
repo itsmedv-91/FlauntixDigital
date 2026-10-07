@@ -1,4 +1,4 @@
-# Flauntix HQ — agency platform (Phase 1 done, Phase 2 in progress)
+# Flauntix HQ — agency platform (Phases 1 and 2 done)
 
 Internal operating platform for Flauntix Digital (6–8 person digital agency, 4–5 clients), designed multi-tenant so it can later be sold as SaaS to other agencies.
 
@@ -21,6 +21,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   - `0002_content.sql` — content calendar + client approvals
   - `0003_portal.sql` — client portal (magic-link access for client contacts)
   - `0004_invoicing.sql` — GST invoicing (tax invoices, payments, numbering)
+  - `0005_assets.sql` — brand / asset library (one private Storage bucket)
 - Tests: `supabase/tests/` runs the migrations against a local Postgres with a mocked
   `auth` schema and asserts on RLS and the RPCs. See `supabase/tests/README.md`.
   Add assertions there for any new policy or RPC.
@@ -31,8 +32,9 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   `claim_portal_access()`, `portal_decide_approval(approval_id, decision, comment)`,
   `portal_add_comment(item_id, body)`, `issue_invoice(inv_id, issue_on)`,
   `cancel_invoice(inv_id, reason)`, `recalc_invoice(inv_id)`,
-  `refresh_invoice_payment_status(inv_id)`, plus helpers `auth_email()`,
-  `portal_client_ids()`, `is_portal_user()`, `fy_of(date)`, `gst_state_name(code)`.
+  `refresh_invoice_payment_status(inv_id)`, `replace_asset(old_id, new_id)`, plus helpers
+  `auth_email()`, `portal_client_ids()`, `is_portal_user()`, `fy_of(date)`,
+  `gst_state_name(code)`, `path_agency(path)`.
   The two content RPCs keep an item's status and its approval round in one transaction —
   never set `content_items.status = 'client_approval'` by hand, go through the RPC.
 - Roles: owner > admin > manager > member > freelancer.
@@ -86,7 +88,28 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
     financial year, amount in words). The state list is mirrored in `gst_state_name()` in SQL
     because `issue_invoice()` prints the place of supply itself — keep the two in step.
     `npm run test:gst` covers these (no test runner, Node's own TS stripping).
-- New schema changes go in a NEW migration file (`0005_*.sql`), never edit an applied one.
+- **Assets / Storage.** Files live in ONE private bucket, `assets`, namespaced by path:
+  `{agency_id}/{client_id|_agency}/{uuid}.{ext}`. Not a bucket per agency — creating buckets at
+  runtime needs privileges the app does not have, one policy set beats N, and bucket-per-tenant
+  does not survive being sold as SaaS.
+  - Storage read access is DERIVED from the `assets` table: the `assets_object_read` policy only
+    asks whether a visible `assets` row exists for that path, so the table's own role scoping is
+    inherited. An object with no row is unreadable, which is what stops a half-finished upload
+    from leaking.
+  - Upload and delete policies key on the path prefix via `path_agency(name)`, which returns
+    null for a malformed path. That matters: casting a junk prefix straight to uuid would raise
+    instead of denying, and `is_staff(null)` is false.
+  - Freelancers see agency-wide assets plus the assets of clients they have a task or content
+    item for — same shape as `clients_select`.
+  - Uploads go browser → Storage directly (`components/asset-upload.tsx`), never through a
+    Server Action: those are capped at 2mb in `next.config.mjs` and agencies upload video. The
+    action records only the metadata, and removes the object again if that insert fails.
+  - Signed URLs expire, so never store one. `/assets/[id]/download` is a permanent link that
+    signs a fresh URL per click and re-checks access; that is what goes in
+    `content_items.asset_urls`.
+  - `replace_asset()` archives the old row and bumps the version, so "the current logo" is
+    unambiguous while old versions stay downloadable.
+- New schema changes go in a NEW migration file (`0006_*.sql`), never edit an applied one.
 - Enums need explicit casts inside a CASE (`'scheduled'::content_status`); a bare CASE
   yields text and the update fails at runtime, not at deploy time.
 
@@ -125,6 +148,9 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   pipeline board by status (dropping into "With client" sends for approval), filters, new/edit
   form, detail page with the approval round trail, record-decision form, comments
   (`visible_to_client`), duplicate, mark published, revisions-vs-scope warning
+- Brand / asset library (Phase 2): one private Storage bucket, browser-direct upload, grid with
+  signed previews, per-client and agency-wide assets, kinds and tags, archive, versioned replace,
+  permanent download links that paste into content items
 - Invoicing with GST (Phase 2): tax invoices with per-line CGST+SGST or IGST, per-FY numbering,
   draft → issue → payments → cancel, printable Rule 46 invoice at `/invoices/[id]/print`,
   billing profile in Settings, GSTIN and state on clients
@@ -134,7 +160,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   on the internal content page
 - README.md: Supabase setup, env vars, first-run checklist, roles, portal setup, Vercel deploy
 - Server actions for every module (`leads.ts`, `time.ts`, `team.ts`, `tasks.ts`, `clients.ts`, `projects.ts`, `vault.ts`, `auth.ts`)
-- `npm run typecheck` and `npm run build` both pass (24 routes)
+- `npm run typecheck`, `npm run build` (34 routes), `npm run test:gst` and all four SQL suites pass
 
 ### To do
 1. Run against a real Supabase project and click through: signup → create agency → client →
@@ -144,7 +170,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
    freelancer and confirm they only see their own task and content.
 2. Email delivery for invites (currently the admin copies the link and shares it manually).
 
-### Phase 2 (in progress)
+### Phase 2 (complete)
 Decisions taken with the user, to build on in this order:
 1. **Content calendar + client approvals — DONE.** `0002_content.sql`, `lib/actions/content.ts`,
    month calendar with drag-to-reschedule, pipeline board, detail page with the approval trail.
@@ -155,8 +181,15 @@ Decisions taken with the user, to build on in this order:
    `app/(app)/invoices/`. See the Database section for the rules that must not be bypassed.
    Not built, deliberately: e-invoicing/IRN (only mandatory above ₹5 crore turnover, needs a
    paid GSP), credit/debit notes, GSTR-1 export, and invoices in the client portal.
-4. **Brand / asset library — NEXT.** Supabase Storage bucket per agency, rows linking assets to
-   clients, reusing `content_items.asset_urls` for the calendar side.
+4. **Brand / asset library — DONE.** `0005_assets.sql`, `lib/actions/assets.ts`,
+   `components/asset-upload.tsx`, `app/(app)/assets/`. See the Database section.
+   Deviated from the earlier note on purpose: ONE private bucket namespaced by path, not a
+   bucket per agency — the reasons are in the migration header.
+   Not built, deliberately: image transforms/thumbnails (Supabase's transform API is a paid
+   add-on; the grid previews originals), bulk upload, and showing brand assets in the client
+   portal.
+
+**Phase 2 is complete.** Do not start Phase 3 without being asked.
 
 ### Later phases (do not start without being asked)
 - Phase 3: Meta/Google Ads data, automated client reports, media planning, profitability, HR/leave

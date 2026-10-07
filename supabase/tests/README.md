@@ -10,12 +10,14 @@ initdb -D /tmp/pgdata -A trust -U postgres
 pg_ctl -D /tmp/pgdata -o "-p 5433 -c listen_addresses=127.0.0.1" -l /tmp/pg.log start
 PG="psql -h 127.0.0.1 -p 5433 -U postgres -v ON_ERROR_STOP=1 -q"
 
-# 2. mock auth, then every migration in order
+# 2. mock auth and storage, then every migration in order
 $PG -f supabase/tests/00_mock_auth.sql
+$PG -f supabase/tests/01_mock_storage.sql
 $PG -f supabase/migrations/0001_foundation.sql
 $PG -f supabase/migrations/0002_content.sql
 $PG -f supabase/migrations/0003_portal.sql
 $PG -f supabase/migrations/0004_invoicing.sql
+$PG -f supabase/migrations/0005_assets.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -27,6 +29,7 @@ $PG -c "grant usage on schema public to authenticated, anon;
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/02_content_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/03_portal_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/04_invoicing_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/05_assets_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -95,6 +98,33 @@ A tax invoice is a legal document, so these check the money to the paisa.
   payments exist
 - An issued invoice cannot be edited, deleted, or have a line added
 - Members, freelancers and portal clients see no invoices at all; agencies see only their own
+
+## What 05_assets_tests.sql covers
+
+**Scope limit, read this first.** The storage half runs against the mock in
+`01_mock_storage.sql`, whose column shapes mirror Supabase's real `storage.buckets` and
+`storage.objects`. That genuinely exercises the *policy expressions* in `0005_assets.sql` — who
+may write under which path prefix, and whose reads resolve through the `assets` table. It does
+NOT test the Storage service: signed URL generation, the upload API, MIME sniffing and
+`file_size_limit` all live in Supabase's storage-api layer, not in Postgres, and none of it runs
+here.
+
+- `path_agency()` returns the agency for a well-formed path and null for junk, an empty string, a
+  null and a bare filename — and `is_staff(null)` is false, so a malformed path denies instead of
+  raising
+- Staff see the whole library; a freelancer sees agency-wide assets plus only the clients they
+  have a task for, and a second freelancer attached through a content item instead sees the other
+  half; other agencies and portal clients see nothing
+- Freelancers cannot add assets, members cannot delete them, managers can; storage paths are
+  unique
+- Storage objects: staff can upload under their own agency prefix but not another agency's and
+  not under a malformed prefix; freelancers and portal clients cannot upload at all
+- Reads follow the `assets` table, and an object with no matching row is invisible to everyone —
+  which is what keeps a half-finished upload from being readable
+- Deleting objects is managers only
+- `replace_asset()` bumps the version, links the replacement to what it replaced, archives rather
+  than deletes the old row, leaves the old file downloadable, writes the activity line, and is
+  refused for another agency and for a freelancer
 
 ## Why mock `auth`
 

@@ -2,7 +2,11 @@
 
 import { useState } from 'react';
 
-/** Shows an invite link with a one-click copy button (no email sending yet). */
+/**
+ * Shows a link with a one-click copy button. A relative `url` is resolved
+ * against the current origin when copied, so what lands on the clipboard is
+ * always a full URL that works when pasted somewhere else.
+ */
 export function CopyLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -11,7 +15,8 @@ export function CopyLink({ url }: { url: string }) {
       <button
         onClick={async () => {
           try {
-            await navigator.clipboard.writeText(url);
+            const absolute = url.startsWith('/') ? new URL(url, window.location.origin).toString() : url;
+            await navigator.clipboard.writeText(absolute);
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           } catch {

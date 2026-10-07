@@ -1,4 +1,5 @@
 import type {
+  AssetKind,
   ClientStatus,
   ContentFormat,
   ContentStatus,
@@ -131,6 +132,24 @@ export const VAULT_PLATFORMS = [
   'Email',
   'Other',
 ];
+
+export const ASSET_KINDS: { value: AssetKind; label: string }[] = [
+  { value: 'logo', label: 'Logo' },
+  { value: 'brand_guide', label: 'Brand guide' },
+  { value: 'colour_palette', label: 'Colour palette' },
+  { value: 'font', label: 'Font' },
+  { value: 'image', label: 'Image / creative' },
+  { value: 'video', label: 'Video' },
+  { value: 'document', label: 'Document' },
+  { value: 'template', label: 'Template' },
+  { value: 'other', label: 'Other' },
+];
+
+/** The private Supabase Storage bucket every asset lives in. */
+export const ASSET_BUCKET = 'assets';
+
+/** Matches the bucket's own file_size_limit in 0005_assets.sql. */
+export const ASSET_MAX_BYTES = 100 * 1024 * 1024;
 
 export const MANAGER_ROLES: MemberRole[] = ['owner', 'admin', 'manager'];
 export const ADMIN_ROLES: MemberRole[] = ['owner', 'admin'];

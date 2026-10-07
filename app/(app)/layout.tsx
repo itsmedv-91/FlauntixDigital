@@ -21,6 +21,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: '/tasks', label: 'Tasks', icon: 'tasks' },
     // Freelancers see only the content assigned to them (enforced by RLS).
     { href: '/content', label: 'Content', icon: 'content' },
+    // Freelancers see agency-wide assets plus the clients they have work on (RLS).
+    { href: '/assets', label: 'Assets', icon: 'assets' },
     ...(ctx.isStaff
       ? ([
           { href: '/projects', label: 'Projects', icon: 'projects' },

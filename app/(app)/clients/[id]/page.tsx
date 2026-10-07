@@ -135,6 +135,11 @@ async function Overview({ ctx, c }: { ctx: Ctx; c: Client }) {
             <div>
               <p className="text-xs font-medium text-zinc-500">Tone of voice</p>
               <p className="mt-1 text-zinc-700">{c.brand_voice ?? '—'}</p>
+              <p className="mt-3">
+                <Link href={`/assets?client=${c.id}`} className="text-xs font-medium text-brand-600 hover:underline">
+                  Logos, brand guide and creatives for {c.name} →
+                </Link>
+              </p>
             </div>
             <div>
               <p className="text-xs font-medium text-zinc-500">Services</p>
