@@ -21,11 +21,13 @@ agencies as SaaS.
    (With the Supabase CLI linked to the project, `supabase db push` does the whole set.)
 3. Open **Authentication → URL Configuration** and set:
    - **Site URL:** `http://localhost:3000` while developing, your real domain in production
-   - **Redirect URLs:** add `http://localhost:3000/auth/callback` and
-     `https://your-domain.com/auth/callback`
+   - **Redirect URLs:** add all four —
+     `http://localhost:3000/auth/callback`, `http://localhost:3000/portal/auth/callback`,
+     `https://your-domain.com/auth/callback`, `https://your-domain.com/portal/auth/callback`
 
-   Signup confirmation emails, password resets and invite links all come back through
-   `/auth/callback`, so this step is not optional.
+   Signup confirmations, password resets and invite links come back through `/auth/callback`,
+   and client-portal magic links through `/portal/auth/callback`, so this step is not optional.
+   Miss the portal one and clients get "invalid link" every time.
 4. While testing on your own, you can turn **Authentication → Sign In / Providers → Email →
    Confirm email** off so signups log in instantly. Turn it back on before real users join.
 
@@ -86,6 +88,36 @@ Other scripts: `npm run typecheck`, `npm run build`, `npm run start`.
 Nobody can change their own role. These rules are enforced by Postgres row-level security,
 not just by the UI — a leaked API key still cannot read another agency's data.
 
+## Giving a client access to the portal
+
+Clients sign in with a magic link — no passwords to reset for people who use the portal twice a
+month.
+
+1. Open the client → **Contacts** tab. Add the contact with their real email address.
+2. Press **Give portal access** on that contact. Access is keyed on the email, so anyone who can
+   read that inbox can sign in and see everything shared with that client — check it carefully.
+3. Send them `https://your-domain.com/portal`. They enter their email and get a sign-in link.
+4. Send content over with **Send to client** on a content item (or by dragging it into
+   *With client* on the content board). It appears in their portal straight away.
+
+What a client can and cannot see:
+
+- **Can:** content in the shared statuses (with client / changes requested / approved /
+  scheduled / published) for their own client record, the approval history, and comments the team
+  explicitly marked *Client can see*.
+- **Cannot:** drafts and internal-review content, internal notes on a post, internal comments,
+  other clients, tasks, time, the CRM, the vault, or anything else in the agency. Portal users
+  are not team members — they have no role and no membership, and the database enforces that
+  rather than the UI.
+
+**Email delivery matters here.** Supabase's built-in email is rate-limited to a handful of
+messages per hour, and a magic link that never arrives looks like a broken portal. Configure
+custom SMTP (Supabase → Project Settings → Authentication → SMTP) before putting real clients on
+it. Magic links expire after an hour.
+
+Revoking access is the same toggle: press **Revoke portal** and their next sign-in attempt is
+refused. Their past approvals stay on the record.
+
 ## Deploying to Vercel
 
 1. Push this repository to GitHub and import it at [vercel.com/new](https://vercel.com/new).
@@ -107,14 +139,15 @@ not just by the UI — a leaked API key still cannot read another agency's data.
 | **Clients** | Retainers and renewal warnings, brand kit, contacts, encrypted credentials vault with an access log |
 | **Leads & CRM** | Pipeline kanban with value per stage, follow-up chasing, one-click convert to client |
 | **Content** | Month calendar with drag-to-reschedule, production pipeline board, client approval rounds with a full audit trail, revisions vs. scope |
+| **Client portal** | Magic-link sign-in for client contacts, no passwords; they approve or request changes on their own content and message the team |
 | **Time** | Week view Mon–Sun, per-day and per-client totals, timers and manual entries, team view for managers |
 | **Chat** | Realtime channels grouped by general / clients / departments |
 | **Team** | Members with workload and hours, roles and hourly cost, invites, deactivation |
 | **Settings** | Your profile, password, agency name |
 
-Phase 2 is underway: the content calendar with client approvals is built. The client portal
-(magic-link sign-in for client contacts), GST invoicing and the brand/asset library are next,
-and `CLAUDE.md` records the design decisions already taken for each.
+Phase 2 is underway: the content calendar with client approvals and the client portal are
+built. GST invoicing and the brand/asset library are next, and `CLAUDE.md` records the design
+decisions already taken for each.
 
 ## Project layout
 

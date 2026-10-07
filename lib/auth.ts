@@ -36,7 +36,12 @@ export const getContext = cache(async () => {
   ]);
 
   const memberships = ((rows ?? []) as unknown as AgencyMembership[]).filter((m) => m.agency);
-  if (memberships.length === 0) redirect('/onboarding');
+  if (memberships.length === 0) {
+    // A client contact signing in is not a team member, so offering to create an
+    // agency would be wrong — send them to their portal instead.
+    const { data: isPortal } = await supabase.rpc('is_portal_user');
+    redirect(isPortal ? '/portal' : '/onboarding');
+  }
 
   const preferred = (await cookies()).get(AGENCY_COOKIE)?.value;
   const current = memberships.find((m) => m.agency_id === preferred) ?? memberships[0];

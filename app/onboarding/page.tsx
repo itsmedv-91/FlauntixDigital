@@ -19,6 +19,11 @@ export default async function OnboardingPage() {
     .eq('active', true);
   if (count && count > 0) redirect('/dashboard');
 
+  // Client contacts have no membership either, but they are not here to start
+  // an agency.
+  const { data: isPortal } = await supabase.rpc('is_portal_user');
+  if (isPortal) redirect('/portal');
+
   return (
     <AuthShell title="Set up your agency" subtitle={`Signed in as ${user.email}.`}>
       <OnboardingForm />

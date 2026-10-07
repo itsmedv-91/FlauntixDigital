@@ -78,6 +78,11 @@ export interface ClientContact {
   phone: string | null;
   designation: string | null;
   is_primary: boolean;
+  /** Portal access is off until someone deliberately turns it on. */
+  portal_enabled: boolean;
+  /** Set on the contact's first magic-link sign-in. */
+  user_id: string | null;
+  last_portal_login: string | null;
 }
 
 export interface Lead {

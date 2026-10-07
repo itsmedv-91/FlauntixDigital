@@ -94,6 +94,36 @@ export async function addContact(clientId: string, fd: FormData) {
   revalidatePath(`/clients/${clientId}`);
 }
 
+/**
+ * Grants or revokes a contact's access to the client portal. Access is keyed on
+ * their email, so there has to be one, and it has to be right — whoever can read
+ * that inbox can sign in and see this client's shared content.
+ */
+export async function setPortalAccess(clientId: string, contactId: string, enabled: boolean) {
+  const ctx = await getContext();
+  assertRole(ctx, MANAGER_ROLES);
+
+  const { data: contact } = await ctx.supabase
+    .from('client_contacts')
+    .select('name, email')
+    .eq('id', contactId)
+    .maybeSingle();
+  if (!contact) throw new Error('Contact not found.');
+  if (enabled && !contact.email) throw new Error('Add an email address for this contact first.');
+
+  const { error } = await ctx.supabase
+    .from('client_contacts')
+    .update({ portal_enabled: enabled })
+    .eq('id', contactId);
+  if (error) throw new Error(error.message);
+
+  await logActivity(ctx, 'client', clientId, enabled ? 'portal_granted' : 'portal_revoked', {
+    name: contact.name,
+    email: contact.email,
+  });
+  revalidatePath(`/clients/${clientId}`);
+}
+
 export async function deleteContact(clientId: string, contactId: string) {
   const ctx = await getContext();
   assertRole(ctx, MANAGER_ROLES);

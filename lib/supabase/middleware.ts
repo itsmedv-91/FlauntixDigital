@@ -1,7 +1,11 @@
 import { createServerClient, type CookieMethodsServer } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/auth', '/invite', '/forgot-password'];
+const PUBLIC_PATHS = ['/login', '/signup', '/auth', '/invite', '/forgot-password', '/portal/login', '/portal/auth'];
+
+function isPortalPath(path: string) {
+  return path === '/portal' || path.startsWith('/portal/');
+}
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -40,8 +44,14 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !isPublic) {
     const redirect = request.nextUrl.clone();
-    redirect.pathname = '/login';
-    redirect.searchParams.set('next', path);
+    redirect.search = '';
+    // Clients belong on the portal's own sign-in page, not the team one.
+    if (isPortalPath(path)) {
+      redirect.pathname = '/portal/login';
+    } else {
+      redirect.pathname = '/login';
+      redirect.searchParams.set('next', path);
+    }
     return NextResponse.redirect(redirect);
   }
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext, getTeam } from '@/lib/auth';
-import { addContact, deleteClientRecord, deleteContact, updateClientRecord } from '@/lib/actions/clients';
+import { addContact, deleteClientRecord, deleteContact, setPortalAccess, updateClientRecord } from '@/lib/actions/clients';
 import { addCredential, deleteCredential } from '@/lib/actions/vault';
 import { createProject } from '@/lib/actions/projects';
 import { CLIENT_STATUSES, PROJECT_STATUSES, VAULT_PLATFORMS } from '@/lib/constants';
@@ -220,7 +220,7 @@ async function Contacts({ ctx, c }: { ctx: Ctx; c: Client }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
       <Card>
-        <CardHeader title="Contacts" subtitle="People at the client you work with" />
+        <CardHeader title="Contacts" subtitle="People at the client you work with. Portal access lets them approve their own content." />
         {contacts.length ? (
           <ul className="divide-y divide-zinc-100">
             {contacts.map((p) => (
@@ -235,11 +235,40 @@ async function Contacts({ ctx, c }: { ctx: Ctx; c: Client }) {
                     {p.email && p.phone && ' · '}
                     {p.phone && <a href={`https://wa.me/${p.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="hover:text-brand-600">{p.phone}</a>}
                   </p>
+                  <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                    {p.portal_enabled ? (
+                      <>
+                        <Badge className="bg-emerald-100 text-emerald-800">Portal access</Badge>
+                        <span className="text-zinc-400">
+                          {p.last_portal_login ? `last signed in ${formatDate(p.last_portal_login)}` : 'not signed in yet'}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-zinc-400">No portal access</span>
+                    )}
+                  </p>
                 </div>
                 {ctx.isManager && (
-                  <form action={deleteContact.bind(null, c.id, p.id)}>
-                    <button className="text-xs text-zinc-400 hover:text-red-600">Remove</button>
-                  </form>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <form action={setPortalAccess.bind(null, c.id, p.id, !p.portal_enabled)}>
+                      <SubmitButton
+                        variant="secondary"
+                        size="sm"
+                        pendingText="…"
+                        disabled={!p.email && !p.portal_enabled}
+                        confirm={
+                          p.portal_enabled
+                            ? `Remove ${p.name}'s portal access? They will not be able to sign in again.`
+                            : `Give ${p.name} (${p.email}) portal access? Anyone who can read that inbox will be able to sign in and see this client's shared content.`
+                        }
+                      >
+                        {p.portal_enabled ? 'Revoke portal' : 'Give portal access'}
+                      </SubmitButton>
+                    </form>
+                    <form action={deleteContact.bind(null, c.id, p.id)}>
+                      <button className="text-xs text-zinc-400 hover:text-red-600">Remove</button>
+                    </form>
+                  </div>
                 )}
               </li>
             ))}

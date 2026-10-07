@@ -62,7 +62,7 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
         .order('round', { ascending: false }),
       ctx.supabase
         .from('content_comments')
-        .select('id, body, created_at, author_id, visible_to_client, author:profiles(full_name, email)')
+        .select('id, body, created_at, author_id, author_contact_id, visible_to_client, author:profiles(full_name, email), contact:client_contacts(name)')
         .eq('content_item_id', id)
         .order('created_at'),
       ctx.isStaff && item.client
@@ -87,8 +87,10 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
     body: string;
     created_at: string;
     author_id: string | null;
+    author_contact_id: string | null;
     visible_to_client: boolean;
     author: { full_name: string | null; email: string | null } | null;
+    contact: { name: string } | null;
   }[];
   const pending = approvals.find((a) => a.decision === 'pending');
   const status = CONTENT_STATUSES.find((s) => s.value === item.status);
@@ -234,19 +236,28 @@ export default async function ContentDetailPage({ params }: { params: Promise<{ 
           <Card>
             <CardHeader title="Comments" subtitle={`${comments.length} so far`} />
             <ul className="divide-y divide-zinc-100">
-              {comments.map((c) => (
-                <li key={c.id} className="flex gap-3 px-5 py-3.5">
-                  <Avatar person={c.author} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs">
-                      <span className="font-semibold text-ink">{displayName(c.author)}</span>
-                      <span className="ml-2 text-zinc-400">{formatDateTime(c.created_at)}</span>
-                      {c.visible_to_client && <Badge className="ml-2 bg-brand-50 text-brand-700">Client can see</Badge>}
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">{c.body}</p>
-                  </div>
-                </li>
-              ))}
+              {comments.map((c) => {
+                const fromClient = Boolean(c.author_contact_id);
+                return (
+                  <li key={c.id} className={cn('flex gap-3 px-5 py-3.5', fromClient && 'bg-brand-50/40')}>
+                    <Avatar person={fromClient ? { full_name: c.contact?.name ?? 'Client' } : c.author} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs">
+                        <span className="font-semibold text-ink">
+                          {fromClient ? (c.contact?.name ?? 'Client') : displayName(c.author)}
+                        </span>
+                        <span className="ml-2 text-zinc-400">{formatDateTime(c.created_at)}</span>
+                        {fromClient ? (
+                          <Badge className="ml-2 bg-brand-100 text-brand-800">From the client</Badge>
+                        ) : (
+                          c.visible_to_client && <Badge className="ml-2 bg-brand-50 text-brand-700">Client can see</Badge>
+                        )}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">{c.body}</p>
+                    </div>
+                  </li>
+                );
+              })}
               {comments.length === 0 && <li className="px-5 py-4 text-sm text-zinc-500">No comments yet.</li>}
             </ul>
             <form action={addContentComment.bind(null, item.id)} className="space-y-2 border-t border-zinc-100 px-5 py-4">

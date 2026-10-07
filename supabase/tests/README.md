@@ -14,6 +14,7 @@ PG="psql -h 127.0.0.1 -p 5433 -U postgres -v ON_ERROR_STOP=1 -q"
 $PG -f supabase/tests/00_mock_auth.sql
 $PG -f supabase/migrations/0001_foundation.sql
 $PG -f supabase/migrations/0002_content.sql
+$PG -f supabase/migrations/0003_portal.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -23,6 +24,7 @@ $PG -c "grant usage on schema public to authenticated, anon;
 
 # 4. the assertions
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/02_content_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/03_portal_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -42,6 +44,31 @@ Every line should read `PASS`. The scripts are re-runnable: the test file clears
 - The `published_at` trigger stamps and clears correctly
 - The constraint that a decided approval must carry a timestamp
 - Comments: you cannot post as another user, and other agencies cannot read them
+
+## What 03_portal_tests.sql covers
+
+The portal lets people outside the agency sign in, so these are mostly leak tests. A portal user
+is `authenticated` like anyone else — the only things between them and another client's data are
+RLS and the view definitions.
+
+- A portal contact resolves through `portal_me`, and sees only the shared statuses in
+  `portal_content`: drafts, internal-review items, other clients of the same agency and other
+  agencies are all invisible
+- `portal_content` has no `notes` column at all, and `portal_comments` returns only
+  `visible_to_client` rows — so internal notes and internal chatter cannot leak
+- Direct `select` on content_items, content_approvals, content_comments, clients, tasks, leads,
+  credentials, time_entries, messages, memberships and activity_log all return zero rows, which
+  also proves RLS applies inside policy subqueries (the existing comment policy's `exists`
+  against content_items is itself filtered)
+- A portal user cannot insert a comment or update content directly — only through the RPCs
+- A contact whose `portal_enabled` is false, and a signed-in stranger, get nothing at all
+- `claim_portal_access()` binds `user_id` and stamps `last_portal_login`
+- `portal_decide_approval`: requires a comment when asking for changes, sets `on_behalf = false`,
+  credits the contact and no profile, counts a revision for changes only, writes the activity
+  line the team sees, and refuses a second decision on the same round
+- A client cannot decide or comment for another client of the same agency, for another agency,
+  or on content never shared with them
+- No regression internally: staff still see every item, both comments, and the internal notes
 
 ## Why mock `auth`
 

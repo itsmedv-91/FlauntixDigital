@@ -18,28 +18,48 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 - Migrations, applied in order (all idempotent, safe to re-run):
   - `0001_foundation.sql` — agencies, team, CRM, projects, tasks, time, chat, vault
   - `0002_content.sql` — content calendar + client approvals
+  - `0003_portal.sql` — client portal (magic-link access for client contacts)
 - Tests: `supabase/tests/` runs the migrations against a local Postgres with a mocked
   `auth` schema and asserts on RLS and the RPCs. See `supabase/tests/README.md`.
   Add assertions there for any new policy or RPC.
 - Every business table has `agency_id`; RLS enforces tenant isolation and roles via
   `is_member / is_staff / is_manager / is_admin` (SECURITY DEFINER helpers).
 - RPCs: `create_agency(name)`, `accept_invitation(token)`, `invitation_preview(token)`,
-  `request_content_approval(item_id)`, `decide_content_approval(approval_id, decision, comment, contact_id)`.
+  `request_content_approval(item_id)`, `decide_content_approval(approval_id, decision, comment, contact_id)`,
+  `claim_portal_access()`, `portal_decide_approval(approval_id, decision, comment)`,
+  `portal_add_comment(item_id, body)`, plus helpers `auth_email()`, `portal_client_ids()`, `is_portal_user()`.
   The two content RPCs keep an item's status and its approval round in one transaction —
   never set `content_items.status = 'client_approval'` by hand, go through the RPC.
 - Roles: owner > admin > manager > member > freelancer.
   - Freelancers: only tasks assigned to them (+ the client/project of those tasks), only `kind='general'` channels, no CRM/leads/vault.
   - Vault (`credentials`): managers and above only.
   - Nobody can change their own role; owners can't be demoted.
-- The migration and RLS were tested against Postgres 16 with a mocked `auth` schema: tenant isolation,
-  freelancer scoping, self-promotion block and invite email matching all behave correctly.
+- **Client portal (external users).** Client contacts are NOT members: no `memberships` row and no
+  `member_role`, so no internal policy had to change. Access comes from
+  `client_contacts.portal_enabled` + a match on `user_id` or `lower(email)`.
+  - They have NO direct read access to `content_items` / `content_approvals` /
+    `content_comments` — the internal policies already exclude a non-member, which the tests
+    assert. They read four security-barrier views instead: `portal_me`, `portal_content`,
+    `portal_approvals`, `portal_comments`.
+  - The views exist because RLS is row-level, not column-level: `portal_content` simply does not
+    select `content_items.notes`, so internal notes cannot reach a client even by accident, and
+    `portal_comments` requires `visible_to_client`. Add a client-facing column by adding it to
+    the view, never by adding a portal policy to the base table.
+  - `portal_content` exposes only the shared statuses (`client_approval`, `changes_requested`,
+    `approved`, `scheduled`, `published`) — drafts and internal review stay invisible.
+  - Writes go through `portal_decide_approval` / `portal_add_comment` only. A client's own
+    decision has `on_behalf = false`; a team member recording what the client said over WhatsApp
+    goes through `decide_content_approval` and gets `on_behalf = true`.
+- The migrations and RLS were tested against Postgres 16 with a mocked `auth` schema: tenant
+  isolation, freelancer scoping, self-promotion block, invite email matching, the approval RPCs
+  and every portal leak path all behave correctly.
 - FK embed names used in selects: `profiles!tasks_assignee_id_fkey`, `profiles!tasks_created_by_fkey`
   (tasks has two FKs to profiles), `profiles!content_items_assignee_id_fkey`,
   `profiles!content_items_created_by_fkey`, `profiles!content_approvals_requested_by_fkey`,
   `profiles!content_approvals_decided_by_profile_id_fkey`. Other tables have one FK to
   profiles, so plain `profiles(...)` works. A select string built by concatenation defeats
   supabase-js inference — cast the row `as unknown as T`.
-- New schema changes go in a NEW migration file (`0003_*.sql`), never edit an applied one.
+- New schema changes go in a NEW migration file (`0004_*.sql`), never edit an applied one.
 - Enums need explicit casts inside a CASE (`'scheduled'::content_status`); a bare CASE
   yields text and the update fails at runtime, not at deploy time.
 
@@ -49,6 +69,11 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 - Bind IDs with `action.bind(null, id)`; read form fields with `str/num/list/csv` from `lib/utils.ts`.
 - Pages are Server Components; client components only where needed (`'use client'`: board drag-drop, timer, reveal secret, auth forms using `useActionState`).
 - Next 15: `params` and `searchParams` are Promises — always `await` them.
+- Portal pages: `lib/portal.ts` → `getPortalContext()` (cached) is the portal's `getContext()`.
+  Signed-in portal pages live in the `app/portal/(portal)/` route group so the guarding layout
+  does NOT wrap `app/portal/login` — flattening that group makes `/portal/login` redirect to
+  itself forever. Anything public under `/portal` must stay outside the group AND be listed in
+  `PUBLIC_PATHS` in `lib/supabase/middleware.ts`.
 - UI primitives in `components/ui.tsx` (Button, LinkButton, Card, CardHeader, PageHeader, Badge, Avatar, Field, Input, Select, Textarea, EmptyState, Stat, Disclosure). `SubmitButton` (client) supports `pendingText` and `confirm`.
 - Dates: IST helpers in `lib/utils.ts` (`todayIST`, `weekStartIST`, `formatDate`, `formatDateTime`). Currency: `formatINR`.
 - Vault secrets: AES-256-GCM in `lib/crypto.ts` (server-only). Decrypt only via `revealCredential` (logs every reveal).
@@ -73,7 +98,11 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   pipeline board by status (dropping into "With client" sends for approval), filters, new/edit
   form, detail page with the approval round trail, record-decision form, comments
   (`visible_to_client`), duplicate, mark published, revisions-vs-scope warning
-- README.md: Supabase setup, env vars, first-run checklist, roles, Vercel deploy
+- Client portal (Phase 2): magic-link sign-in (no passwords), `/portal` with content grouped by
+  what needs the client, approve / request-changes form writing a real approval round, client
+  comment thread, per-contact access toggle on the client's Contacts tab, client comments badged
+  on the internal content page
+- README.md: Supabase setup, env vars, first-run checklist, roles, portal setup, Vercel deploy
 - Server actions for every module (`leads.ts`, `time.ts`, `team.ts`, `tasks.ts`, `clients.ts`, `projects.ts`, `vault.ts`, `auth.ts`)
 - `npm run typecheck` and `npm run build` both pass (24 routes)
 
@@ -89,12 +118,10 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 Decisions taken with the user, to build on in this order:
 1. **Content calendar + client approvals — DONE.** `0002_content.sql`, `lib/actions/content.ts`,
    month calendar with drag-to-reschedule, pipeline board, detail page with the approval trail.
-2. **Client portal** — magic-link sign-in (Supabase Auth OTP), access derived from
-   `client_contacts`, NOT a new `member_role`: external users must stay out of `memberships`
-   so the internal policies are untouched. Clients see their own content awaiting approval and
-   decide it themselves; `content_approvals` already carries `decided_by_contact_id` and
-   `on_behalf` for exactly this, and `content_comments.visible_to_client` gates the thread.
-3. **Invoicing with GST** — agency GSTIN on `agencies`, GSTIN + billing state on `clients`,
+2. **Client portal — DONE.** `0003_portal.sql`, `lib/portal.ts`, `lib/actions/portal.ts`,
+   `app/portal/`. Magic-link sign-in, access from `client_contacts.portal_enabled`, four
+   security-barrier views, two write RPCs. See the Database section for why the views exist.
+3. **Invoicing with GST — NEXT.** agency GSTIN on `agencies`, GSTIN + billing state on `clients`,
    sequential per-financial-year invoice numbers, SAC codes, place of supply, and CGST+SGST
    vs IGST chosen by comparing states. Printable invoice view. No e-invoicing/IRN: that is
    only mandatory above ₹5 crore turnover and needs a paid GSP.
