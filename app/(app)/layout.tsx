@@ -28,6 +28,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/leads', label: 'Leads & CRM', icon: 'leads' },
         ] as NavItem[])
       : []),
+    // Billing is managers and above, the same as the invoices RLS policy.
+    ...(ctx.isManager ? ([{ href: '/invoices', label: 'Invoices', icon: 'invoices' }] as NavItem[]) : []),
     { href: '/time', label: 'Time', icon: 'time' },
     { href: '/chat', label: 'Chat', icon: 'chat' },
     ...(ctx.isStaff ? ([{ href: '/team', label: 'Team', icon: 'team' }] as NavItem[]) : []),
@@ -73,13 +75,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen">
       <Sidebar items={items} footer={footer} />
-      <div className="lg:pl-60">
+      <div className="lg:pl-60 print:pl-0">
         {running && (
-          <div className="sticky top-0 z-10 flex justify-end border-b border-zinc-200/70 bg-[#f6f5f9]/90 px-4 py-2 backdrop-blur sm:px-8">
+          <div className="no-print sticky top-0 z-10 flex justify-end border-b border-zinc-200/70 bg-[#f6f5f9]/90 px-4 py-2 backdrop-blur sm:px-8">
             <TimerPill startedAt={running.started_at} label={runningTask?.title ?? running.note ?? 'Timer running'} />
           </div>
         )}
-        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8">{children}</main>
+        <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-8 sm:py-8 print:max-w-none print:p-0">{children}</main>
       </div>
     </div>
   );

@@ -59,7 +59,8 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Other scripts: `npm run typecheck`, `npm run build`, `npm run start`.
+Other scripts: `npm run typecheck`, `npm run build`, `npm run start`, `npm run test:gst`
+(the GST helper tests — GSTIN check digit, financial year, amount in words).
 
 > There is no ESLint config yet, so `npm run lint` drops into Next's interactive setup
 > prompt. `next build` does not run it, so this does not affect deploys.
@@ -118,6 +119,40 @@ it. Magic links expire after an hour.
 Revoking access is the same toggle: press **Revoke portal** and their next sign-in attempt is
 refused. Their past approvals stay on the record.
 
+## Raising a GST invoice
+
+Before the first invoice, fill in **Settings → Billing profile**: your registered legal name,
+GSTIN (the check digit is verified), state, address and bank details. Issuing is blocked without
+the state, and charging GST is blocked without a GSTIN. Then put each client's **GSTIN and
+state** on their client record — the state is the place of supply, and it decides the tax split.
+
+1. **Invoices → New invoice.** Pick the client and the dates. This creates a *draft*, which has
+   no number yet.
+2. **Add the lines.** Description, SAC code, quantity, rate, discount and GST rate. Tax is
+   recalculated by the database on every change, so what you see is what prints.
+3. **Issue it.** This allocates the next number for the financial year — `FLX/26-27/001` — and
+   locks the invoice.
+4. **Print / PDF** opens the invoice document. Use your browser's print dialog and "Save as PDF".
+5. **Record payments** as they arrive; the status moves to partly paid, then paid.
+
+Things worth knowing:
+
+- **CGST+SGST or IGST is decided for you**, by comparing your state with the place of supply.
+  Same state splits the tax in half as CGST and SGST; different states charge IGST.
+- **An issued invoice cannot be edited or deleted.** GST numbering has to stay consecutive, so a
+  mistake is fixed by cancelling it (the number stays reserved) and raising a new one. Only
+  drafts can be deleted, which is why a number is not allocated until you issue.
+- **Numbers restart each financial year** (1 April to 31 March) and are per agency. The prefix is
+  capped at 6 characters so the number fits GST's 16-character limit.
+- **Invoicing is managers and above**, like the credentials vault. Members, freelancers and
+  portal clients cannot see invoices at all.
+- **Not built, deliberately:** e-invoicing / IRN (only mandatory above ₹5 crore turnover and it
+  needs a paid GSP account), credit and debit notes, GSTR-1 export, and showing invoices in the
+  client portal.
+
+This produces a compliant tax invoice for a straightforward services business. It is not tax
+advice — have your CA look at your first invoice.
+
 ## Deploying to Vercel
 
 1. Push this repository to GitHub and import it at [vercel.com/new](https://vercel.com/new).
@@ -140,14 +175,15 @@ refused. Their past approvals stay on the record.
 | **Leads & CRM** | Pipeline kanban with value per stage, follow-up chasing, one-click convert to client |
 | **Content** | Month calendar with drag-to-reschedule, production pipeline board, client approval rounds with a full audit trail, revisions vs. scope |
 | **Client portal** | Magic-link sign-in for client contacts, no passwords; they approve or request changes on their own content and message the team |
+| **Invoices** | GST tax invoices with per-line CGST+SGST or IGST, per-financial-year numbering, payments and balances, printable Rule 46 document |
 | **Time** | Week view Mon–Sun, per-day and per-client totals, timers and manual entries, team view for managers |
 | **Chat** | Realtime channels grouped by general / clients / departments |
 | **Team** | Members with workload and hours, roles and hourly cost, invites, deactivation |
 | **Settings** | Your profile, password, agency name |
 
-Phase 2 is underway: the content calendar with client approvals and the client portal are
-built. GST invoicing and the brand/asset library are next, and `CLAUDE.md` records the design
-decisions already taken for each.
+Phase 2 is underway: the content calendar with client approvals, the client portal and GST
+invoicing are built. The brand/asset library is next, and `CLAUDE.md` records the design
+decisions already taken for it.
 
 ## Project layout
 

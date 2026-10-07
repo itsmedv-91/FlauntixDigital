@@ -2,14 +2,15 @@
   "name": "flauntix-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Flauntix Digital agency operating platform — Phase 1 (Foundation)",
+  "description": "Flauntix Digital agency operating platform \u2014 Phase 1 (Foundation)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "gen:key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+    "gen:key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
+    "test:gst": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON lib/__tests__/gst.test.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

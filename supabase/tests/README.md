@@ -15,6 +15,7 @@ $PG -f supabase/tests/00_mock_auth.sql
 $PG -f supabase/migrations/0001_foundation.sql
 $PG -f supabase/migrations/0002_content.sql
 $PG -f supabase/migrations/0003_portal.sql
+$PG -f supabase/migrations/0004_invoicing.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -25,6 +26,7 @@ $PG -c "grant usage on schema public to authenticated, anon;
 # 4. the assertions
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/02_content_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/03_portal_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/04_invoicing_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -69,6 +71,30 @@ RLS and the view definitions.
 - A client cannot decide or comment for another client of the same agency, for another agency,
   or on content never shared with them
 - No regression internally: staff still see every item, both comments, and the internal notes
+
+## What 04_invoicing_tests.sql covers
+
+A tax invoice is a legal document, so these check the money to the paisa.
+
+- `fy_of()` puts 1 April in the new financial year and 31 March in the old one
+- Intra-state: CGST and SGST each take half the line's tax, with the odd paisa going to CGST so
+  the two halves add back to the tax exactly (1,000.06 at 18% is the case that catches a naive
+  split rounding both halves up)
+- Inter-state: the whole tax lands in IGST, and changing the place of supply moves it across
+  without changing the grand total
+- Totals reconcile: taxable + tax + round off = total, and the per-line totals sum to the
+  pre-rounding figure
+- A 0% line attracts no tax
+- Numbering: `FLX/26-27/001` then `002`; a deleted draft leaves no gap; a different financial
+  year restarts at `001`; each agency has its own sequence; a prefix that would push the number
+  past 16 characters is refused and leaves the invoice unnumbered
+- Issuing is refused twice, with no lines, without an agency state, and when tax is charged with
+  no GSTIN — but allowed at 0% tax with no GSTIN
+- Payments move the status to partly_paid then paid, and removing one moves it back
+- Cancelling keeps the number, records the reason, is refused twice and is refused while
+  payments exist
+- An issued invoice cannot be edited, deleted, or have a line added
+- Members, freelancers and portal clients see no invoices at all; agencies see only their own
 
 ## Why mock `auth`
 

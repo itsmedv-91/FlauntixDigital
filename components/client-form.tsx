@@ -1,4 +1,5 @@
 import { CLIENT_STATUSES, SERVICES } from '@/lib/constants';
+import { GST_STATES } from '@/lib/gst';
 import type { Client, Profile } from '@/lib/types';
 import { displayName } from '@/lib/utils';
 import { SubmitButton } from './submit-button';
@@ -69,6 +70,29 @@ export function ClientForm({
       <Field label="Notes" className="sm:col-span-2">
         <Textarea name="notes" defaultValue={client?.notes ?? ''} placeholder="Goals, competitors, do's and don'ts, approval process…" />
       </Field>
+      <fieldset className="grid gap-4 border-t border-zinc-100 pt-4 sm:col-span-2 sm:grid-cols-2">
+        <legend className="-mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-2">
+          Billing — needed to raise a GST invoice
+        </legend>
+        <Field label="GSTIN" hint="15 characters; the check digit is verified on save">
+          <Input name="gstin" defaultValue={client?.gstin ?? ''} placeholder="27AACCM1234A1Z5" maxLength={15} className="font-mono uppercase" />
+        </Field>
+        <Field label="State (place of supply)" hint="Decides CGST+SGST vs IGST">
+          <Select name="state_code" defaultValue={client?.state_code ?? ''}>
+            <option value="">Not set</option>
+            {GST_STATES.map((s) => (
+              <option key={s.code} value={s.code}>{s.code} — {s.name}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Billing address" className="sm:col-span-2">
+          <Textarea name="billing_address" rows={2} defaultValue={client?.billing_address ?? ''} placeholder="As it should appear on the invoice" />
+        </Field>
+        <Field label="Billing email" hint="Where invoices get sent">
+          <Input name="billing_email" type="email" defaultValue={client?.billing_email ?? ''} />
+        </Field>
+      </fieldset>
+
       <div className="sm:col-span-2">
         <SubmitButton>{submitLabel}</SubmitButton>
       </div>

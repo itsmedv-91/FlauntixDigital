@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { assertRole, getContext, logActivity } from '@/lib/auth';
 import { ADMIN_ROLES, MANAGER_ROLES } from '@/lib/constants';
+import { gstinProblem } from '@/lib/gst';
 import { list, num, str } from '@/lib/utils';
 
 function clientFields(fd: FormData) {
@@ -20,7 +21,18 @@ function clientFields(fd: FormData) {
     brand_colors: str(fd, 'brand_colors'),
     brand_voice: str(fd, 'brand_voice'),
     notes: str(fd, 'notes'),
+    // Billing identity, needed before this client can be invoiced.
+    gstin: str(fd, 'gstin')?.toUpperCase() ?? null,
+    state_code: str(fd, 'state_code'),
+    billing_address: str(fd, 'billing_address'),
+    billing_email: str(fd, 'billing_email'),
   };
+}
+
+/** A wrong GSTIN makes every invoice to this client wrong, so check it early. */
+function assertClientGstin(fields: { gstin: string | null }) {
+  const problem = gstinProblem(fields.gstin);
+  if (problem) throw new Error(`Client GSTIN: ${problem}`);
 }
 
 export async function createClientRecord(fd: FormData) {
@@ -28,6 +40,7 @@ export async function createClientRecord(fd: FormData) {
   assertRole(ctx, MANAGER_ROLES);
   const fields = clientFields(fd);
   if (!fields.name) throw new Error('Client name is required.');
+  assertClientGstin(fields);
 
   const { data, error } = await ctx.supabase
     .from('clients')
@@ -55,6 +68,7 @@ export async function updateClientRecord(id: string, fd: FormData) {
   assertRole(ctx, MANAGER_ROLES);
   const fields = clientFields(fd);
   if (!fields.name) throw new Error('Client name is required.');
+  assertClientGstin(fields);
   const { error } = await ctx.supabase.from('clients').update(fields).eq('id', id);
   if (error) throw new Error(error.message);
   await logActivity(ctx, 'client', id, 'updated', { name: fields.name });

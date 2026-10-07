@@ -28,3 +28,16 @@ select {
   background: #d4d4d8;
   border-radius: 999px;
 }
+
+/* Printing: drop the app chrome so an invoice prints as a clean document. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  @page {
+    margin: 12mm;
+  }
+}

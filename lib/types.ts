@@ -23,12 +23,26 @@ export type ContentStatus =
   | 'archived';
 export type ContentFormat = 'static' | 'carousel' | 'reel' | 'story' | 'video' | 'blog' | 'email' | 'ad' | 'other';
 export type ApprovalDecision = 'pending' | 'approved' | 'changes_requested';
+export type InvoiceStatus = 'draft' | 'issued' | 'partly_paid' | 'paid' | 'cancelled';
 
 export interface Agency {
   id: string;
   name: string;
   slug: string | null;
   created_at: string;
+  /** Billing identity printed on every invoice (0004_invoicing.sql). */
+  legal_name?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  state_code?: string | null;
+  billing_address?: string | null;
+  billing_email?: string | null;
+  billing_phone?: string | null;
+  bank_details?: string | null;
+  invoice_prefix?: string | null;
+  invoice_terms?: string | null;
+  default_sac?: string | null;
+  default_gst_rate?: number | null;
 }
 
 export interface Profile {
@@ -66,6 +80,10 @@ export interface Client {
   brand_colors: string | null;
   brand_voice: string | null;
   notes: string | null;
+  gstin: string | null;
+  state_code: string | null;
+  billing_address: string | null;
+  billing_email: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -236,6 +254,75 @@ export interface Credential {
   url: string | null;
   notes: string | null;
   updated_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  agency_id: string;
+  client_id: string;
+  /** Null while a draft — a number is only allocated on issue. */
+  number: string | null;
+  fy: string | null;
+  status: InvoiceStatus;
+  issue_date: string | null;
+  due_date: string | null;
+  /** Snapshotted on issue so the record keeps what was printed. */
+  supplier_name: string | null;
+  supplier_gstin: string | null;
+  supplier_address: string | null;
+  supplier_state_code: string | null;
+  recipient_name: string | null;
+  recipient_gstin: string | null;
+  recipient_address: string | null;
+  place_of_supply_code: string | null;
+  place_of_supply_name: string | null;
+  /** Generated column: supplier state differs from place of supply. */
+  is_interstate: boolean;
+  reverse_charge: boolean;
+  taxable_total: number;
+  cgst_total: number;
+  sgst_total: number;
+  igst_total: number;
+  tax_total: number;
+  round_off: number;
+  total: number;
+  notes: string | null;
+  terms: string | null;
+  bank_details: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceLine {
+  id: string;
+  invoice_id: string;
+  project_id: string | null;
+  description: string;
+  sac_code: string | null;
+  quantity: number;
+  unit_price: number;
+  discount_pct: number;
+  gst_rate: number;
+  position: number;
+  /** All five are computed by the recalc_invoice() trigger. */
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  line_total: number;
+}
+
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  paid_on: string;
+  method: string | null;
+  reference: string | null;
+  note: string | null;
+  created_at: string;
 }
 
 export interface ActivityItem {

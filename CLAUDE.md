@@ -11,6 +11,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 ## Commands
 - `npm install` then `npm run dev`
 - `npm run typecheck` and `npm run build` must pass before calling anything done
+- `npm run test:gst` runs the GST helper tests; `supabase/tests/` runs the SQL ones
 - `npm run gen:key` prints a value for `CREDENTIALS_ENCRYPTION_KEY`
 - Env vars: see `.env.example`
 
@@ -19,6 +20,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   - `0001_foundation.sql` — agencies, team, CRM, projects, tasks, time, chat, vault
   - `0002_content.sql` — content calendar + client approvals
   - `0003_portal.sql` — client portal (magic-link access for client contacts)
+  - `0004_invoicing.sql` — GST invoicing (tax invoices, payments, numbering)
 - Tests: `supabase/tests/` runs the migrations against a local Postgres with a mocked
   `auth` schema and asserts on RLS and the RPCs. See `supabase/tests/README.md`.
   Add assertions there for any new policy or RPC.
@@ -27,7 +29,10 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 - RPCs: `create_agency(name)`, `accept_invitation(token)`, `invitation_preview(token)`,
   `request_content_approval(item_id)`, `decide_content_approval(approval_id, decision, comment, contact_id)`,
   `claim_portal_access()`, `portal_decide_approval(approval_id, decision, comment)`,
-  `portal_add_comment(item_id, body)`, plus helpers `auth_email()`, `portal_client_ids()`, `is_portal_user()`.
+  `portal_add_comment(item_id, body)`, `issue_invoice(inv_id, issue_on)`,
+  `cancel_invoice(inv_id, reason)`, `recalc_invoice(inv_id)`,
+  `refresh_invoice_payment_status(inv_id)`, plus helpers `auth_email()`,
+  `portal_client_ids()`, `is_portal_user()`, `fy_of(date)`, `gst_state_name(code)`.
   The two content RPCs keep an item's status and its approval round in one transaction —
   never set `content_items.status = 'client_approval'` by hand, go through the RPC.
 - Roles: owner > admin > manager > member > freelancer.
@@ -59,7 +64,29 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   `profiles!content_approvals_decided_by_profile_id_fkey`. Other tables have one FK to
   profiles, so plain `profiles(...)` works. A select string built by concatenation defeats
   supabase-js inference — cast the row `as unknown as T`.
-- New schema changes go in a NEW migration file (`0004_*.sql`), never edit an applied one.
+- **Invoicing.** A tax invoice is a legal document, so the rules live in SQL, not the app:
+  - Line and tax arithmetic is computed by the `recalc_invoice()` trigger. Never write
+    `invoice_lines.taxable/cgst/sgst/igst/line_total` or any `invoices.*_total` from the app.
+    Tax is worked out per line and summed (not taken on the sum), so the printed per-line
+    columns add up to the totals; intra-state gives the odd paisa to CGST.
+  - The `invoice_lines_recalc` trigger is `after insert or delete or update OF <input columns>`
+    on purpose: `recalc_invoice()` writes back to `invoice_lines`, and a plain `after update`
+    trigger recurses until the stack blows. Add an input column to that list, never the
+    computed ones.
+  - `invoices.is_interstate` is a generated column (`supplier_state_code` vs
+    `place_of_supply_code`), which is what picks CGST+SGST or IGST. Never set it by hand.
+  - Numbers come only from `issue_invoice()`, which allocates atomically from
+    `invoice_counters` per agency per financial year. A draft carries no number, so deleting
+    one cannot leave a gap in a sequence that has to be consecutive (Rule 46(b)).
+  - An issued invoice is immutable (RLS limits update/delete to `status = 'draft'`) and is
+    cancelled, never deleted — `cancel_invoice()` keeps the number reserved.
+  - Billing is managers and above, like the vault. Members, freelancers and portal users see
+    nothing.
+  - GST reference data lives in `lib/gst.ts` (state codes, GSTIN check digit, SAC codes,
+    financial year, amount in words). The state list is mirrored in `gst_state_name()` in SQL
+    because `issue_invoice()` prints the place of supply itself — keep the two in step.
+    `npm run test:gst` covers these (no test runner, Node's own TS stripping).
+- New schema changes go in a NEW migration file (`0005_*.sql`), never edit an applied one.
 - Enums need explicit casts inside a CASE (`'scheduled'::content_status`); a bare CASE
   yields text and the update fails at runtime, not at deploy time.
 
@@ -98,6 +125,9 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   pipeline board by status (dropping into "With client" sends for approval), filters, new/edit
   form, detail page with the approval round trail, record-decision form, comments
   (`visible_to_client`), duplicate, mark published, revisions-vs-scope warning
+- Invoicing with GST (Phase 2): tax invoices with per-line CGST+SGST or IGST, per-FY numbering,
+  draft → issue → payments → cancel, printable Rule 46 invoice at `/invoices/[id]/print`,
+  billing profile in Settings, GSTIN and state on clients
 - Client portal (Phase 2): magic-link sign-in (no passwords), `/portal` with content grouped by
   what needs the client, approve / request-changes form writing a real approval round, client
   comment thread, per-contact access toggle on the client's Contacts tab, client comments badged
@@ -121,11 +151,11 @@ Decisions taken with the user, to build on in this order:
 2. **Client portal — DONE.** `0003_portal.sql`, `lib/portal.ts`, `lib/actions/portal.ts`,
    `app/portal/`. Magic-link sign-in, access from `client_contacts.portal_enabled`, four
    security-barrier views, two write RPCs. See the Database section for why the views exist.
-3. **Invoicing with GST — NEXT.** agency GSTIN on `agencies`, GSTIN + billing state on `clients`,
-   sequential per-financial-year invoice numbers, SAC codes, place of supply, and CGST+SGST
-   vs IGST chosen by comparing states. Printable invoice view. No e-invoicing/IRN: that is
-   only mandatory above ₹5 crore turnover and needs a paid GSP.
-4. **Brand / asset library** — Supabase Storage bucket per agency, rows linking assets to
+3. **Invoicing with GST — DONE.** `0004_invoicing.sql`, `lib/gst.ts`, `lib/actions/invoices.ts`,
+   `app/(app)/invoices/`. See the Database section for the rules that must not be bypassed.
+   Not built, deliberately: e-invoicing/IRN (only mandatory above ₹5 crore turnover, needs a
+   paid GSP), credit/debit notes, GSTR-1 export, and invoices in the client portal.
+4. **Brand / asset library — NEXT.** Supabase Storage bucket per agency, rows linking assets to
    clients, reusing `content_items.asset_urls` for the calendar side.
 
 ### Later phases (do not start without being asked)

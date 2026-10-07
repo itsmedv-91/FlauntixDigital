@@ -19,6 +19,7 @@ const ICONS = {
   clients: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   leads: 'M3 3v18h18M7 15l4-4 3 3 5-6',
   content: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+  invoices: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4',
   time: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
   chat: 'M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12',
   team: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0',
@@ -63,7 +64,7 @@ export function Sidebar({ items, footer }: { items: NavItem[]; footer: React.Rea
   return (
     <>
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between bg-ink px-4 py-3 lg:hidden">
+      <div className="no-print sticky top-0 z-30 flex items-center justify-between bg-ink px-4 py-3 lg:hidden">
         <Logo light />
         <button
           onClick={() => setOpen((o) => !o)}
@@ -83,7 +84,7 @@ export function Sidebar({ items, footer }: { items: NavItem[]; footer: React.Rea
       )}
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col bg-ink px-3 py-5 lg:flex">
+      <aside className="no-print fixed inset-y-0 left-0 z-20 hidden w-60 flex-col bg-ink px-3 py-5 lg:flex">
         <div className="px-2">
           <Logo light />
         </div>
