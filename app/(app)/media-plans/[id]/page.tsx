@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { deleteMediaPlan, deletePlanLine, setPlanLine, updateMediaPlan } from '@/lib/actions/media';
 import { MEDIA_CHANNELS, MEDIA_PLAN_STATUSES } from '@/lib/constants';
 import type { MediaPlan, MediaPlanLine, PlanVsActual } from '@/lib/types';
@@ -12,6 +13,8 @@ export default async function MediaPlanPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const ctx = await getContext();
   if (!ctx.isStaff) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('media')) notFound();
 
   const { data } = await ctx.supabase
     .from('media_plans')

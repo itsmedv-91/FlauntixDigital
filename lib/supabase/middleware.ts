@@ -1,7 +1,21 @@
 import { createServerClient, type CookieMethodsServer } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/auth', '/invite', '/forgot-password', '/portal/login', '/portal/auth'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/signup',
+  '/auth',
+  '/invite',
+  '/forgot-password',
+  '/portal/login',
+  '/portal/auth',
+  // PWA plumbing. The service worker and manifest are fetched without a
+  // session, and the offline page is shown precisely when nothing else works —
+  // redirecting any of them to /login breaks installing the app.
+  '/sw.js',
+  '/manifest.webmanifest',
+  '/offline',
+];
 
 function isPortalPath(path: string) {
   return path === '/portal' || path.startsWith('/portal/');

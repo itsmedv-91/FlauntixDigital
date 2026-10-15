@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { createInfluencer } from '@/lib/actions/influencers';
 import { INFLUENCER_NICHES, INFLUENCER_PLATFORMS, INFLUENCER_STATUSES } from '@/lib/constants';
 import { formatINR } from '@/lib/utils';
@@ -26,6 +27,8 @@ export default async function InfluencersPage({
   const sp = await searchParams;
   const ctx = await getContext();
   if (!ctx.isStaff) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('influencers')) notFound();
 
   let q = ctx.supabase.from('influencers').select('*').eq('agency_id', ctx.agencyId);
   if (sp.status) q = q.eq('status', sp.status as InfluencerStatus);

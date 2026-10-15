@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { askQuestion, deleteConversation } from '@/lib/actions/assistant';
 import { ASSISTANT_MODEL } from '@/lib/ai';
 import { SubmitButton } from '@/components/submit-button';
@@ -12,6 +13,8 @@ export const metadata = { title: 'Assistant' };
 export default async function AssistantThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await getContext();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('assistant')) notFound();
 
   const [{ data: conv }, { data: msgs }] = await Promise.all([
     ctx.supabase

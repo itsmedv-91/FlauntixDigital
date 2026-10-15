@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { createMediaPlan } from '@/lib/actions/media';
 import { MEDIA_PLAN_STATUSES } from '@/lib/constants';
 import type { MediaPlan } from '@/lib/types';
@@ -14,6 +15,8 @@ export default async function MediaPlansPage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const ctx = await getContext();
   if (!ctx.isStaff) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('media')) notFound();
 
   const thisMonth = monthRange(monthIST());
   const quarterEnd = monthRange(addMonths(monthIST(), 2)).end;

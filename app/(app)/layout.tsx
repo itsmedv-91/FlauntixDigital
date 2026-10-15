@@ -1,4 +1,5 @@
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { switchAgency } from '@/lib/actions/auth';
 import { ROLES } from '@/lib/constants';
 import { displayName } from '@/lib/utils';
@@ -8,6 +9,9 @@ import { Avatar } from '@/components/ui';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getContext();
+  // What the agency's plan includes. Self-hosted agencies get everything, so
+  // this changes nothing until somebody is actually on a paid plan.
+  const plan = await getPlan();
 
   const { data: running } = await ctx.supabase
     .from('time_entries')
@@ -28,20 +32,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/projects', label: 'Projects', icon: 'projects' },
           { href: '/clients', label: 'Clients', icon: 'clients' },
           { href: '/leads', label: 'Leads & CRM', icon: 'leads' },
-          { href: '/reports', label: 'Reports', icon: 'reports' },
-          { href: '/media-plans', label: 'Media plans', icon: 'media' },
+          ...(plan.has('reports') ? [{ href: '/reports', label: 'Reports', icon: 'reports' }] : []),
+          ...(plan.has('media') ? [{ href: '/media-plans', label: 'Media plans', icon: 'media' }] : []),
           // The roster carries contact details and negotiated rates, so staff only.
-          { href: '/influencers', label: 'Influencers', icon: 'influencers' },
-          { href: '/seo', label: 'SEO', icon: 'seo' },
+          ...(plan.has('influencers') ? [{ href: '/influencers', label: 'Influencers', icon: 'influencers' }] : []),
+          ...(plan.has('seo') ? [{ href: '/seo', label: 'SEO', icon: 'seo' }] : []),
         ] as NavItem[])
       : []),
     // Billing is managers and above, the same as the invoices RLS policy.
     ...(ctx.isManager
       ? ([
           { href: '/invoices', label: 'Invoices', icon: 'invoices' },
-          { href: '/profitability', label: 'Profitability', icon: 'margin' },
+          ...(plan.has('profitability')
+            ? [{ href: '/profitability', label: 'Profitability', icon: 'margin' }]
+            : []),
           // Rules post in channels and open tasks, so managers and above only.
-          { href: '/automations', label: 'Automations', icon: 'automations' },
+          ...(plan.has('automations')
+            ? [{ href: '/automations', label: 'Automations', icon: 'automations' }]
+            : []),
         ] as NavItem[])
       : []),
     { href: '/time', label: 'Time', icon: 'time' },
@@ -49,7 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: '/leave', label: 'Leave', icon: 'leave' },
     { href: '/chat', label: 'Chat', icon: 'chat' },
     // Answers from the data the viewer can already see, so no role gate.
-    { href: '/assistant', label: 'Assistant', icon: 'assistant' },
+    ...(plan.has('assistant') ? ([{ href: '/assistant', label: 'Assistant', icon: 'assistant' }] as NavItem[]) : []),
     ...(ctx.isStaff ? ([{ href: '/team', label: 'Team', icon: 'team' }] as NavItem[]) : []),
     { href: '/settings', label: 'Settings', icon: 'settings' },
   ];

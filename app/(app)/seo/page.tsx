@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { addKeyword, archiveKeyword, importRankings, recordRanking } from '@/lib/actions/seo';
 import { SEO_PRIORITIES } from '@/lib/constants';
 import { addDays, formatDate, todayIST } from '@/lib/utils';
@@ -28,6 +29,8 @@ export default async function SeoPage({
   const sp = await searchParams;
   const ctx = await getContext();
   if (!ctx.isStaff) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('seo')) notFound();
 
   const { data: clients } = await ctx.supabase
     .from('clients')

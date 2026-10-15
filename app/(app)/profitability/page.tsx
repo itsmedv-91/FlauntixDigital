@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { addExpense, deleteExpense, setHourlyCost } from '@/lib/actions/expenses';
 import { EXPENSE_CATEGORIES, MEDIA_CHANNELS } from '@/lib/constants';
 import type { AgencyMargin, ClientMargin, Expense, MemberRole, Profile } from '@/lib/types';
@@ -56,6 +57,8 @@ export default async function ProfitabilityPage({ searchParams }: { searchParams
   const ctx = await getContext();
   // Costs and margins are managers and above, matching the RPCs' own check.
   if (!ctx.isManager) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('profitability')) notFound();
 
   const { from, to, label } = resolvePeriod(sp);
 

@@ -1,5 +1,7 @@
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { askQuestion } from '@/lib/actions/assistant';
 import { assistantConfigured } from '@/lib/ai';
 import { SubmitButton } from '@/components/submit-button';
@@ -18,6 +20,8 @@ const EXAMPLES = [
 
 export default async function AssistantPage() {
   const ctx = await getContext();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('assistant')) notFound();
 
   const [{ data: convs }, { data: clients }] = await Promise.all([
     ctx.supabase

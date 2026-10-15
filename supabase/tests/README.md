@@ -25,6 +25,7 @@ $PG -f supabase/migrations/0009_hr_leave.sql
 $PG -f supabase/migrations/0010_assistant.sql
 $PG -f supabase/migrations/0011_automations.sql
 $PG -f supabase/migrations/0012_influencers_seo.sql
+$PG -f supabase/migrations/0013_plans.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -48,6 +49,7 @@ psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/07_phase3_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/08_assistant_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/09_automation_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/10_influencer_seo_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/11_plans_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -264,3 +266,20 @@ SEO:
   is distinct from not having checked at all
 - A position above 100 is refused outright
 - Archived keywords are left out, and the other agency gets nothing
+
+## What 11_plans_tests.sql covers
+
+- An agency with NO subscription row is `self_hosted`: no seat limit, no client
+  limit, every module. Four members on no plan is fine — this is the case that
+  must not break for the agency already running the platform
+- Once a subscription exists the plan applies, whatever its status: a cancelled
+  subscription does not fall back to unmetered (that would make cancelling an
+  upgrade) and a past-due one does not lock an agency out of its own records
+- A seat beyond the plan is refused by a TRIGGER, not by the UI; deactivating
+  somebody frees a seat, and `extra_seats` lets them back in
+- A client beyond the plan is refused; a churned client frees its slot; a null
+  limit means unlimited rather than a very large number
+- **An owner cannot upgrade their own plan**, insert a subscription row, or
+  start a second trial — `agency_subscription` has no write policy at all and
+  `start_trial()` can only ever create a trial, once, for an owner
+- `plan_usage()` returns nothing for another agency

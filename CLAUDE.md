@@ -34,6 +34,7 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   - `0010_assistant.sql` — AI assistant audit trail
   - `0011_automations.sql` — automation builder (rules, event log, pg_cron sweep)
   - `0012_influencers_seo.sql` — influencer roster and collaborations, SEO keywords and rankings
+  - `0013_plans.sql` — plans, per-agency subscription, seat and client limits
   - `0007_reports.sql` — client reports (snapshotted, portal-visible when sent)
   - `0008_media_plans.sql` — media planning, `expenses.channel`
   - `0009_hr_leave.sql` — leave requests, approvals, allowances

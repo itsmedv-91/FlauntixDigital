@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { deleteReport, rebuildReport, sendReport, updateReport } from '@/lib/actions/reports';
 import type { ClientReport } from '@/lib/types';
 import { SubmitButton } from '@/components/submit-button';
@@ -11,6 +12,8 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const ctx = await getContext();
   if (!ctx.isStaff) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('reports')) notFound();
 
   const { data } = await ctx.supabase
     .from('client_reports')

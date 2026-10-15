@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { createReport } from '@/lib/actions/reports';
 import type { ClientReport } from '@/lib/types';
 import { SubmitButton } from '@/components/submit-button';
@@ -13,6 +14,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const ctx = await getContext();
   if (!ctx.isStaff) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('reports')) notFound();
 
   // Default the period to last month, which is what you actually report on.
   const lastMonth = addMonths(monthIST(), -1);

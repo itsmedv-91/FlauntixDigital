@@ -4,7 +4,7 @@ import { updateBillingProfile } from '@/lib/actions/invoices';
 import { GST_RATES, GST_STATES, SAC_CODES } from '@/lib/gst';
 import { ROLES } from '@/lib/constants';
 import { SubmitButton } from '@/components/submit-button';
-import { Card, CardHeader, Field, Input, PageHeader, Select, Textarea } from '@/components/ui';
+import { Card, CardHeader, Field, Input, LinkButton, PageHeader, Select, Textarea } from '@/components/ui';
 import { displayName } from '@/lib/utils';
 
 export const metadata = { title: 'Settings' };
@@ -25,7 +25,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Settings" subtitle={`${displayName(ctx.profile)} · ${role?.label} at ${ctx.agency.name}`} />
+      <PageHeader
+        title="Settings"
+        subtitle={`${displayName(ctx.profile)} · ${role?.label} at ${ctx.agency.name}`}
+        actions={
+          ctx.isAdmin ? (
+            <LinkButton href="/settings/plan" variant="secondary">
+              Plan and limits
+            </LinkButton>
+          ) : undefined
+        }
+      />
 
       {saved === 'password' && (
         <p className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getContext, getTeam } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import { createRule, deleteRule, runNow, toggleRule } from '@/lib/actions/automations';
 import { AUTOMATION_ACTIONS, AUTOMATION_TRIGGERS } from '@/lib/constants';
 import { displayName, formatDateTime } from '@/lib/utils';
@@ -13,6 +14,8 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   const ctx = await getContext();
   if (!ctx.isManager) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('automations')) notFound();
 
   const [{ data: rules }, { data: events }, { data: clients }, { data: channels }, team] = await Promise.all([
     ctx.supabase.from('automation_rules').select('*').eq('agency_id', ctx.agencyId).order('created_at'),

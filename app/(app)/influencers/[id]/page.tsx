@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
+import { getPlan } from '@/lib/plan';
 import {
   bookCollabFee,
   createCollab,
@@ -31,6 +32,8 @@ export default async function InfluencerPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const ctx = await getContext();
   if (!ctx.isStaff) notFound();
+  // Hiding the nav link is not enforcement; the page has to refuse too.
+  if (!(await getPlan()).has('influencers')) notFound();
 
   const [{ data: inf }, { data: collabRows }, { data: clients }, { data: projects }] = await Promise.all([
     ctx.supabase.from('influencers').select('*').eq('id', id).maybeSingle(),
