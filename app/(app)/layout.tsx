@@ -30,6 +30,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/leads', label: 'Leads & CRM', icon: 'leads' },
           { href: '/reports', label: 'Reports', icon: 'reports' },
           { href: '/media-plans', label: 'Media plans', icon: 'media' },
+          // The roster carries contact details and negotiated rates, so staff only.
+          { href: '/influencers', label: 'Influencers', icon: 'influencers' },
+          { href: '/seo', label: 'SEO', icon: 'seo' },
         ] as NavItem[])
       : []),
     // Billing is managers and above, the same as the invoices RLS policy.

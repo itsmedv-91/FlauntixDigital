@@ -24,6 +24,7 @@ $PG -f supabase/migrations/0008_media_plans.sql
 $PG -f supabase/migrations/0009_hr_leave.sql
 $PG -f supabase/migrations/0010_assistant.sql
 $PG -f supabase/migrations/0011_automations.sql
+$PG -f supabase/migrations/0012_influencers_seo.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -46,6 +47,7 @@ psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/06_profitability_test
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/07_phase3_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/08_assistant_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/09_automation_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/10_influencer_seo_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -236,3 +238,29 @@ can be is who reads whose questions, and whether the transcript holds:
   be forged through the API
 - `run_all_automations()` and `run_automations_core()` are not callable from the
   API at all — the cron sweep has no caller to authorise
+
+## What 10_influencer_seo_tests.sql covers
+
+Influencers:
+- A manager owns the roster; a member can read it but not change it; a
+  freelancer sees nothing (they are not staff)
+- `book_collab_fee()` writes one `expenses` row against the client, not marked
+  rebilled, and links it back to the collaboration
+- **It refuses a second booking** — otherwise one collaboration would be charged
+  to the margin twice
+- The booked fee shows up in `client_profitability()` as a client cost, which is
+  the reason for routing it through `expenses` rather than a second money table
+- A member cannot book a fee; another agency cannot book ours
+
+SEO:
+- The same keyword cannot be tracked twice for one client
+- Re-checking a day corrects that day rather than adding a second row
+- **A climb is a positive delta**: 42 → 11 reads as +31, and 8 → 19 as −11
+- `best_position` is the best in the window, not the latest
+- A keyword checked once in the window has delta null, not a reassuring zero:
+  one data point is no information
+- A never-checked keyword still appears, with no invented delta
+- An unranked check (null position, "not in the top 100") counts as a check and
+  is distinct from not having checked at all
+- A position above 100 is refused outright
+- Archived keywords are left out, and the other agency gets nothing

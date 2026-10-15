@@ -2,6 +2,8 @@ import type {
   AssetKind,
   AutomationAction,
   AutomationTrigger,
+  CollabStatus,
+  InfluencerStatus,
   ClientStatus,
   LeaveStatus,
   MediaPlanStatus,
@@ -237,4 +239,45 @@ export const AUTOMATION_TRIGGERS: {
 export const AUTOMATION_ACTIONS: { value: AutomationAction; label: string }[] = [
   { value: 'chat_message', label: 'Post in a chat channel' },
   { value: 'create_task', label: 'Open a task' },
+];
+
+export const INFLUENCER_PLATFORMS = ['Instagram', 'YouTube', 'LinkedIn', 'X (Twitter)', 'Facebook', 'Blog', 'Podcast'];
+
+export const INFLUENCER_STATUSES: { value: InfluencerStatus; label: string; tone: string }[] = [
+  { value: 'prospect', label: 'Prospect', tone: 'bg-zinc-100 text-zinc-700' },
+  { value: 'contacted', label: 'Contacted', tone: 'bg-sky-100 text-sky-800' },
+  { value: 'negotiating', label: 'Negotiating', tone: 'bg-amber-100 text-amber-800' },
+  { value: 'active', label: 'Working with us', tone: 'bg-emerald-100 text-emerald-800' },
+  { value: 'past', label: 'Past', tone: 'bg-zinc-200 text-zinc-500' },
+  { value: 'rejected', label: 'Not a fit', tone: 'bg-red-100 text-red-700' },
+];
+
+export const COLLAB_STATUSES: { value: CollabStatus; label: string; tone: string }[] = [
+  { value: 'planned', label: 'Planned', tone: 'bg-zinc-100 text-zinc-700' },
+  { value: 'briefed', label: 'Briefed', tone: 'bg-sky-100 text-sky-800' },
+  { value: 'content_due', label: 'Content due', tone: 'bg-amber-100 text-amber-800' },
+  { value: 'live', label: 'Live', tone: 'bg-brand-100 text-brand-800' },
+  { value: 'completed', label: 'Completed', tone: 'bg-emerald-100 text-emerald-800' },
+  { value: 'cancelled', label: 'Cancelled', tone: 'bg-zinc-200 text-zinc-500' },
+];
+
+export const INFLUENCER_NICHES = [
+  'Fashion',
+  'Beauty',
+  'Food',
+  'Travel',
+  'Fitness',
+  'Tech',
+  'Finance',
+  'Parenting',
+  'Comedy',
+  'Education',
+  'Lifestyle',
+];
+
+/** 1 is the highest. Kept numeric in SQL so ordering needs no CASE. */
+export const SEO_PRIORITIES: { value: number; label: string }[] = [
+  { value: 1, label: 'Primary' },
+  { value: 2, label: 'Secondary' },
+  { value: 3, label: 'Long tail' },
 ];

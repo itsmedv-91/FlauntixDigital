@@ -540,3 +540,86 @@ export interface AutomationEvent {
   summary: string;
   created_at: string;
 }
+
+export type InfluencerStatus = 'prospect' | 'contacted' | 'negotiating' | 'active' | 'past' | 'rejected';
+export type CollabStatus = 'planned' | 'briefed' | 'content_due' | 'live' | 'completed' | 'cancelled';
+
+export interface Influencer {
+  id: string;
+  agency_id: string;
+  name: string;
+  handle: string | null;
+  platform: string;
+  profile_url: string | null;
+  followers: number | null;
+  /** Percent as quoted in a media kit: 2.4 means 2.4%. */
+  engagement_rate: number | null;
+  niches: string[] | null;
+  city: string | null;
+  email: string | null;
+  phone: string | null;
+  rate_card: number | null;
+  status: InfluencerStatus;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface InfluencerCollab {
+  id: string;
+  agency_id: string;
+  influencer_id: string;
+  client_id: string;
+  project_id: string | null;
+  title: string;
+  deliverables: string | null;
+  /** What we pay the influencer — a cost, not what the client is charged. */
+  fee: number;
+  brief_url: string | null;
+  live_url: string | null;
+  go_live_on: string | null;
+  status: CollabStatus;
+  /** Set once the fee is booked, which is what stops it double-counting. */
+  expense_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface SeoKeyword {
+  id: string;
+  agency_id: string;
+  client_id: string;
+  keyword: string;
+  target_url: string | null;
+  search_volume: number | null;
+  difficulty: number | null;
+  priority: number;
+  active: boolean;
+  notes: string | null;
+}
+
+export interface SeoRanking {
+  id: string;
+  keyword_id: string;
+  checked_on: string;
+  /** Null means "not in the top 100", which is not the same as unchecked. */
+  position: number | null;
+  ranking_url: string | null;
+  source: string | null;
+}
+
+/** One row of seo_progress(). `delta` is positive when the keyword climbed. */
+export interface SeoProgress {
+  keyword_id: string;
+  keyword: string;
+  target_url: string | null;
+  search_volume: number | null;
+  difficulty: number | null;
+  priority: number;
+  first_checked: string | null;
+  first_position: number | null;
+  last_checked: string | null;
+  last_position: number | null;
+  best_position: number | null;
+  delta: number | null;
+  checks: number;
+}
