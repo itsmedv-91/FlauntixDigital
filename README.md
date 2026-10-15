@@ -46,7 +46,12 @@ Fill in `.env.local`:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API → anon public key |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000`, or your deployed URL |
 | `CREDENTIALS_ENCRYPTION_KEY` | output of `npm run gen:key` |
+| `ANTHROPIC_API_KEY` | *optional* — [console.anthropic.com](https://console.anthropic.com/), for the assistant at `/assistant` |
 
+> `ANTHROPIC_API_KEY` is the only optional one. Without it everything works except
+> `/assistant`, which shows how to switch it on. It is a metered API: the assistant sends a
+> bounded snapshot of your own data with each question and answers are charged per token.
+>
 > `CREDENTIALS_ENCRYPTION_KEY` encrypts every client password in the vault (AES-256-GCM).
 > Keep it out of git, and **never change it after storing credentials** — existing secrets
 > can no longer be decrypted if you do. Use a different key per environment and store the

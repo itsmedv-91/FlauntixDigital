@@ -6,6 +6,11 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
 - Next.js 15 (App Router, Server Components, Server Actions), React 19, TypeScript strict
 - Supabase: Postgres + Auth + Realtime (`@supabase/ssr` cookie sessions)
 - Tailwind CSS 3 (brand colours `brand-*`, `ink`, `coral-*` in `tailwind.config.ts`)
+- `@anthropic-ai/sdk` — the ONE deliberate exception to "no other runtime deps", added in
+  Phase 4 for the AI assistant. Hand-rolling the Claude call over fetch would mean owning
+  retries, the typed error hierarchy and the beta headers by hand in a TypeScript project
+  that has an official SDK. Nothing else in the app imports it, and the app runs without
+  `ANTHROPIC_API_KEY` (the assistant page explains how to switch it on).
 - No other runtime deps. Keep it that way unless there is a strong reason.
 
 ## Commands
@@ -23,6 +28,10 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   - `0004_invoicing.sql` — GST invoicing (tax invoices, payments, numbering)
   - `0005_assets.sql` — brand / asset library (one private Storage bucket)
   - `0006_profitability.sql` — cost rates, expenses, margin reporting
+  - `0007_reports.sql` — automated client reports (frozen snapshot, portal view)
+  - `0008_media_plans.sql` — media plans, plan vs actual
+  - `0009_hr_leave.sql` — leave requests, approvals, balances
+  - `0010_assistant.sql` — AI assistant audit trail
   - `0007_reports.sql` — client reports (snapshotted, portal-visible when sent)
   - `0008_media_plans.sql` — media planning, `expenses.channel`
   - `0009_hr_leave.sql` — leave requests, approvals, allowances

@@ -43,6 +43,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // Everyone requests leave; managers also see the approvals queue and balances.
     { href: '/leave', label: 'Leave', icon: 'leave' },
     { href: '/chat', label: 'Chat', icon: 'chat' },
+    // Answers from the data the viewer can already see, so no role gate.
+    { href: '/assistant', label: 'Assistant', icon: 'assistant' },
     ...(ctx.isStaff ? ([{ href: '/team', label: 'Team', icon: 'team' }] as NavItem[]) : []),
     { href: '/settings', label: 'Settings', icon: 'settings' },
   ];

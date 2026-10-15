@@ -22,6 +22,7 @@ $PG -f supabase/migrations/0006_profitability.sql
 $PG -f supabase/migrations/0007_reports.sql
 $PG -f supabase/migrations/0008_media_plans.sql
 $PG -f supabase/migrations/0009_hr_leave.sql
+$PG -f supabase/migrations/0010_assistant.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -36,6 +37,7 @@ psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/04_invoicing_tests.sq
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/05_assets_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/06_profitability_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/07_phase3_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/08_assistant_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -194,3 +196,19 @@ PostgREST does per request.
 Note that `SECURITY DEFINER` functions are owned by the superuser here, as they
 are in Supabase, so they bypass RLS by design — which is why each one re-checks
 the caller's role with `is_staff()` internally.
+
+## What 08_assistant_tests.sql covers
+
+The assistant's answers come from an API and cannot be asserted on here. What
+can be is who reads whose questions, and whether the transcript holds:
+
+- A member can open a thread, add a turn, and read both back
+- A colleague in the same agency sees neither the thread nor its turns, and
+  cannot write into it even knowing its id
+- A MANAGER cannot read a member's thread — deliberate; only admins and owners
+  can, because they answer for the agency's use of a paid API
+- An owner can read a member's thread for audit but cannot write into it or
+  delete it to cover tracks
+- `assistant_messages` has no update policy, so a turn cannot be rewritten
+- A turn whose `agency_id` does not match its thread is refused
+- The other agency sees nothing, and cannot open a thread in this one

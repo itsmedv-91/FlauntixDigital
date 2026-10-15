@@ -2,7 +2,7 @@
   "name": "flauntix-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Flauntix Digital agency operating platform \u2014 Phase 1 (Foundation)",
+  "description": "Flauntix Digital agency operating platform — Phase 1 (Foundation)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,6 +15,7 @@
     "test": "npm run test:gst && npm run test:dates"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.134.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.4",
     "next": "^15.3.0",
