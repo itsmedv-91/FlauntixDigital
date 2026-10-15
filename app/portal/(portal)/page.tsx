@@ -37,14 +37,26 @@ function Row({ item, cta }: { item: PortalContentRow; cta?: string }) {
 export default async function PortalHome() {
   const ctx = await getPortalContext();
 
-  const [{ data: contentRows }, { data: pendingRows }] = await Promise.all([
+  const [{ data: contentRows }, { data: pendingRows }, { data: reportRows }] = await Promise.all([
     ctx.supabase.from('portal_content').select('*').order('scheduled_date', { ascending: true, nullsFirst: false }),
     ctx.supabase.from('portal_approvals').select('id, content_item_id, requested_at').eq('decision', 'pending'),
+    ctx.supabase
+      .from('portal_reports')
+      .select('id, title, period_start, period_end, sent_at')
+      .order('period_start', { ascending: false })
+      .limit(12),
   ]);
 
   const items = (contentRows ?? []) as unknown as PortalContentRow[];
   const pending = new Set(((pendingRows ?? []) as { content_item_id: string }[]).map((p) => p.content_item_id));
   const today = todayIST();
+  const reports = (reportRows ?? []) as unknown as {
+    id: string;
+    title: string;
+    period_start: string;
+    period_end: string;
+    sent_at: string;
+  }[];
 
   const needsYou = items.filter((i) => i.status === 'client_approval');
   const withTeam = items.filter((i) => i.status === 'changes_requested');
@@ -125,7 +137,26 @@ export default async function PortalHome() {
           </Card>
         )}
 
-        {items.length === 0 && (
+        {reports.length > 0 && (
+          <Card>
+            <CardHeader title="Your reports" subtitle="What we did, period by period" />
+            <ul className="divide-y divide-zinc-100">
+              {reports.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                  <Link href={`/portal/reports/${r.id}`} className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-ink hover:text-brand-600">{r.title}</span>
+                    <span className="block truncate text-xs text-zinc-500">
+                      {formatDate(r.period_start)} – {formatDate(r.period_end, true)}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 text-xs text-zinc-400">sent {formatDate(r.sent_at)}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+
+        {items.length === 0 && reports.length === 0 && (
           <EmptyState
             title="Nothing shared with you yet"
             body={`When ${ctx.agencyName} sends content over for approval, it will show up here.`}

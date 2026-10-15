@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getContext } from '@/lib/auth';
 import { addExpense, deleteExpense, setHourlyCost } from '@/lib/actions/expenses';
-import { EXPENSE_CATEGORIES } from '@/lib/constants';
+import { EXPENSE_CATEGORIES, MEDIA_CHANNELS } from '@/lib/constants';
 import type { AgencyMargin, ClientMargin, Expense, MemberRole, Profile } from '@/lib/types';
 import { SubmitButton } from '@/components/submit-button';
 import { Badge, Card, CardHeader, Disclosure, EmptyState, Field, Input, PageHeader, Select, Stat, Textarea } from '@/components/ui';
@@ -321,7 +321,7 @@ export default async function ProfitabilityPage({ searchParams }: { searchParams
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-ink">{e.description}</span>
                     <span className="block truncate text-xs text-zinc-500">
-                      {[e.category, e.client?.name ?? 'Overhead', e.vendor, formatDate(e.incurred_on)]
+                      {[e.category, e.channel, e.client?.name ?? 'Overhead', e.vendor, formatDate(e.incurred_on)]
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
@@ -363,6 +363,14 @@ export default async function ProfitabilityPage({ searchParams }: { searchParams
                 </Field>
                 <Field label="Vendor">
                   <Input name="vendor" placeholder="Who you paid" />
+                </Field>
+                <Field label="Channel" hint="Ad spend only — this is what media plans match on">
+                  <Select name="channel" defaultValue="">
+                    <option value="">Not applicable</option>
+                    {MEDIA_CHANNELS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </Select>
                 </Field>
                 <Field label="Notes">
                   <Textarea name="notes" rows={1} />

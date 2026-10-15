@@ -37,6 +37,7 @@ export async function addExpense(fd: FormData) {
     description,
     amount,
     vendor: str(fd, 'vendor'),
+    channel: str(fd, 'channel'),
     rebilled: fd.get('rebilled') === 'on',
     notes: str(fd, 'notes'),
     created_by: ctx.user.id,

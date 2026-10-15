@@ -28,6 +28,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           { href: '/projects', label: 'Projects', icon: 'projects' },
           { href: '/clients', label: 'Clients', icon: 'clients' },
           { href: '/leads', label: 'Leads & CRM', icon: 'leads' },
+          { href: '/reports', label: 'Reports', icon: 'reports' },
+          { href: '/media-plans', label: 'Media plans', icon: 'media' },
         ] as NavItem[])
       : []),
     // Billing is managers and above, the same as the invoices RLS policy.
@@ -38,6 +40,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         ] as NavItem[])
       : []),
     { href: '/time', label: 'Time', icon: 'time' },
+    // Everyone requests leave; managers also see the approvals queue and balances.
+    { href: '/leave', label: 'Leave', icon: 'leave' },
     { href: '/chat', label: 'Chat', icon: 'chat' },
     ...(ctx.isStaff ? ([{ href: '/team', label: 'Team', icon: 'team' }] as NavItem[]) : []),
     { href: '/settings', label: 'Settings', icon: 'settings' },

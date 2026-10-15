@@ -1,6 +1,8 @@
 import type {
   AssetKind,
   ClientStatus,
+  LeaveStatus,
+  MediaPlanStatus,
   ContentFormat,
   ContentStatus,
   LeadStage,
@@ -162,6 +164,35 @@ export const EXPENSE_CATEGORIES = [
   'Travel',
   'Influencer fees',
   'Other',
+];
+
+/** Paid channels a media plan is built from. */
+export const MEDIA_CHANNELS = [
+  'Meta',
+  'Google',
+  'YouTube',
+  'LinkedIn',
+  'X (Twitter)',
+  'Influencer',
+  'Programmatic',
+  'Print / OOH',
+  'Other',
+];
+
+export const MEDIA_PLAN_STATUSES: { value: MediaPlanStatus; label: string; tone: string }[] = [
+  { value: 'draft', label: 'Draft', tone: 'bg-zinc-100 text-zinc-700' },
+  { value: 'shared', label: 'Shared with client', tone: 'bg-brand-100 text-brand-800' },
+  { value: 'active', label: 'Live', tone: 'bg-emerald-100 text-emerald-800' },
+  { value: 'closed', label: 'Closed', tone: 'bg-zinc-200 text-zinc-500' },
+];
+
+export const LEAVE_TYPES = ['Casual', 'Sick', 'Earned', 'Comp off', 'Unpaid', 'Maternity / Paternity'];
+
+export const LEAVE_STATUSES: { value: LeaveStatus; label: string; tone: string }[] = [
+  { value: 'pending', label: 'Awaiting approval', tone: 'bg-amber-100 text-amber-800' },
+  { value: 'approved', label: 'Approved', tone: 'bg-emerald-100 text-emerald-800' },
+  { value: 'rejected', label: 'Rejected', tone: 'bg-red-100 text-red-700' },
+  { value: 'cancelled', label: 'Cancelled', tone: 'bg-zinc-200 text-zinc-500' },
 ];
 
 export const MANAGER_ROLES: MemberRole[] = ['owner', 'admin', 'manager'];

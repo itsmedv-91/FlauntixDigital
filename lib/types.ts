@@ -24,6 +24,9 @@ export type ContentStatus =
 export type ContentFormat = 'static' | 'carousel' | 'reel' | 'story' | 'video' | 'blog' | 'email' | 'ad' | 'other';
 export type ApprovalDecision = 'pending' | 'approved' | 'changes_requested';
 export type InvoiceStatus = 'draft' | 'issued' | 'partly_paid' | 'paid' | 'cancelled';
+export type ReportStatus = 'draft' | 'sent';
+export type MediaPlanStatus = 'draft' | 'shared' | 'active' | 'closed';
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type AssetKind =
   | 'logo'
   | 'brand_guide'
@@ -368,6 +371,8 @@ export interface Expense {
   description: string;
   amount: number;
   vendor: string | null;
+  /** Which paid channel, for ad spend. Media plans match actuals on this. */
+  channel: string | null;
   /** Passed on to the client; still a cost, offset by the invoice line. */
   rebilled: boolean;
   invoice_id: string | null;
@@ -404,6 +409,91 @@ export interface AgencyMargin {
   margin_pct: number | null;
   client_hours: number;
   unpriced_hours: number;
+}
+
+/** Client-facing figures only — never hours, cost rates or margins. */
+export interface ReportSnapshot {
+  published?: { title: string; platforms: string[] | null; format: string; date: string | null; url: string | null }[];
+  upcoming?: { title: string; platforms: string[] | null; format: string; date: string | null }[];
+  awaiting_you?: { title: string; date: string | null; since: string }[];
+  counts?: { published: number; tasks_done: number; approval_rounds: number; changes_requested: number };
+  ad_spend?: number;
+  built_at?: string;
+}
+
+export interface ClientReport {
+  id: string;
+  agency_id: string;
+  client_id: string;
+  period_start: string;
+  period_end: string;
+  title: string;
+  status: ReportStatus;
+  /** Frozen when the report is sent, so a sent report never changes. */
+  snapshot: ReportSnapshot;
+  summary: string | null;
+  next_steps: string | null;
+  built_at: string | null;
+  sent_at: string | null;
+  created_at: string;
+}
+
+export interface MediaPlan {
+  id: string;
+  agency_id: string;
+  client_id: string;
+  name: string;
+  period_start: string;
+  period_end: string;
+  status: MediaPlanStatus;
+  objective: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface MediaPlanLine {
+  id: string;
+  plan_id: string;
+  channel: string;
+  /** Always the first of the month, normalised by trigger. */
+  month: string;
+  planned: number;
+  objective: string | null;
+  notes: string | null;
+}
+
+export interface PlanVsActual {
+  channel: string;
+  month: string;
+  planned: number;
+  actual: number;
+  variance: number;
+}
+
+export interface LeaveRequest {
+  id: string;
+  agency_id: string;
+  user_id: string;
+  leave_type: string;
+  from_date: string;
+  to_date: string;
+  days: number;
+  reason: string | null;
+  status: LeaveStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  created_at: string;
+}
+
+export interface LeaveBalance {
+  user_id: string;
+  full_name: string | null;
+  leave_type: string;
+  allowance: number;
+  taken: number;
+  pending: number;
+  remaining: number;
 }
 
 export interface ActivityItem {

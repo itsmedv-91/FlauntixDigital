@@ -23,6 +23,9 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   - `0004_invoicing.sql` — GST invoicing (tax invoices, payments, numbering)
   - `0005_assets.sql` — brand / asset library (one private Storage bucket)
   - `0006_profitability.sql` — cost rates, expenses, margin reporting
+  - `0007_reports.sql` — client reports (snapshotted, portal-visible when sent)
+  - `0008_media_plans.sql` — media planning, `expenses.channel`
+  - `0009_hr_leave.sql` — leave requests, approvals, allowances
 - Tests: `supabase/tests/` runs the migrations against a local Postgres with a mocked
   `auth` schema and asserts on RLS and the RPCs. See `supabase/tests/README.md`.
   Add assertions there for any new policy or RPC.
@@ -37,7 +40,10 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   `auth_email()`, `portal_client_ids()`, `is_portal_user()`, `fy_of(date)`,
   `gst_state_name(code)`, `path_agency(path)`, `client_profitability(agency, from, to)`,
   `agency_profitability(agency, from, to)`, `unpriced_contributors(agency, from, to)`,
-  `set_hourly_cost(member, cost)`.
+  `set_hourly_cost(member, cost)`, `build_client_report(report_id)`,
+  `send_client_report(report_id)`, `media_plan_summary(plan)`,
+  `request_leave(...)`, `decide_leave(...)`, `cancel_leave(id)`,
+  `leave_balances(agency, fy)`, `set_leave_allowance(...)`.
   The two content RPCs keep an item's status and its approval round in one transaction —
   never set `content_items.status = 'client_approval'` by hand, go through the RPC.
 - Roles: owner > admin > manager > member > freelancer.
@@ -135,7 +141,28 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
     everyone's `hourly_cost` through the API even though only managers see it in the UI. Fixing
     it properly means moving the column to a manager-only table (RLS is row-level, not
     column-level). Worth doing before this is sold as SaaS.
-- New schema changes go in a NEW migration file (`0007_*.sql`), never edit an applied one.
+- **Client reports.** Figures are snapshotted into `client_reports.snapshot` jsonb when built
+  and frozen when sent — a report states what you told the client in September, so recomputing
+  it live would rewrite history the moment a post is rescheduled.
+  - The snapshot carries NO hours, cost rates or margins. A client-facing document holding
+    internal cost data is one bad policy away from an embarrassing leak; the tests assert those
+    keys are absent. Margins live in /profitability.
+  - `portal_reports` exposes sent reports only, same security-barrier pattern as the other
+    portal views.
+- **Media planning.** `media_plan_lines` is unique on (plan, channel, month) and a trigger
+  normalises `month` to its first day, so entering a slot twice corrects it. Actuals come from
+  `expenses` where `category = 'Ad spend'`, matched on the new `expenses.channel`; spend with no
+  channel shows as `Unattributed`, and a channel spent on but never planned appears with
+  planned = 0 — the unbudgeted overspend is the point.
+- **Leave.** `decide_leave()` refuses to let anyone decide their own request, owners included,
+  rather than trusting the UI to hide the button. `request_leave()` refuses a request
+  overlapping one already pending or approved. `leave_requests` has no INSERT or UPDATE policy
+  at all — every write goes through the RPCs, which is what keeps those two rules enforceable.
+  A pending request is reported separately from `taken` and does not reduce `remaining`.
+  - plpgsql keeps a function's `RETURNS TABLE` column names in scope for the whole body, so an
+    unqualified column reference matching an output name is ambiguous and fails at call time,
+    not at create time. Qualify everything inside these reporting functions.
+- New schema changes go in a NEW migration file (`0010_*.sql`), never edit an applied one.
 - Enums need explicit casts inside a CASE (`'scheduled'::content_status`); a bare CASE
   yields text and the update fails at runtime, not at deploy time.
 
@@ -184,13 +211,19 @@ Internal operating platform for Flauntix Digital (6–8 person digital agency, 4
   what needs the client, approve / request-changes form writing a real approval round, client
   comment thread, per-contact access toggle on the client's Contacts tab, client comments badged
   on the internal content page
+- Client reports (Phase 3): build from live data, write the commentary, send to freeze, print
+  view, and the client reads it in their portal
+- Media planning (Phase 3): budget per channel per month against actual ad spend, with
+  unplanned and unspent both surfaced
+- Leave (Phase 3): requests with overlap checking, approvals nobody can self-approve, balances
+  per financial year, and a two-week "who is off" view
 - Profitability (Phase 3): per-client margin and the agency bottom line for a month, FY quarter,
   financial year or custom range; expenses with rebill tracking; cost-rate editing including the
   owner's; a warning naming anyone whose time is costed at zero
 - README.md: Supabase setup, env vars, first-run checklist, roles, portal setup, Vercel deploy
 - Server actions for every module (`leads.ts`, `time.ts`, `team.ts`, `tasks.ts`, `clients.ts`, `projects.ts`, `vault.ts`, `auth.ts`)
-- `npm run typecheck`, `npm run build` (35 routes), `npm test` and all five SQL suites pass
-  (258 SQL assertions, 44 helper checks)
+- `npm run typecheck`, `npm run build` (42 routes), `npm test` and all six SQL suites pass
+  (311 SQL assertions, 44 helper checks)
 
 ### To do
 1. Run against a real Supabase project and click through: signup → create agency → client →
@@ -231,11 +264,15 @@ Decisions taken with the user, to build on in this order:
    by API or by CSV import from Ads Manager, then added to `client_profitability` as another
    cost line (and as revenue where the spend is rebilled). The expenses table already handles
    fronted ad spend in the meantime.
-3. **Automated client reports** — not started. Would pull content published, approvals,
-   tasks delivered, hours and invoices for a period; deliver as a print view like
-   `/invoices/[id]/print` and optionally surface in the portal.
-4. **Media planning** — not started.
-5. **HR / leave** — not started.
+3. **Automated client reports — DONE.** `0007_reports.sql`, `lib/actions/reports.ts`,
+   `app/(app)/reports/`, `app/portal/(portal)/reports/`.
+4. **Media planning — DONE.** `0008_media_plans.sql`, `lib/actions/media.ts`,
+   `app/(app)/media-plans/`.
+5. **HR / leave — DONE.** `0009_hr_leave.sql`, `lib/actions/leave.ts`, `app/(app)/leave/`.
+   Not built, deliberately: public holiday calendars, accrual schedules (allowances are set per
+   FY by hand), payroll, and attendance/shift tracking.
+
+**Phase 3 is complete except the ads integration, which is blocked on credentials.**
 
 ### Later phases (do not start without being asked)
 - Phase 4: AI assistant, automation builder, influencer & SEO, mobile apps, multi-agency SaaS launch

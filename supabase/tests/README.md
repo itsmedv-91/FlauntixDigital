@@ -19,6 +19,9 @@ $PG -f supabase/migrations/0003_portal.sql
 $PG -f supabase/migrations/0004_invoicing.sql
 $PG -f supabase/migrations/0005_assets.sql
 $PG -f supabase/migrations/0006_profitability.sql
+$PG -f supabase/migrations/0007_reports.sql
+$PG -f supabase/migrations/0008_media_plans.sql
+$PG -f supabase/migrations/0009_hr_leave.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
@@ -32,6 +35,7 @@ psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/03_portal_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/04_invoicing_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/05_assets_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/06_profitability_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/07_phase3_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -153,6 +157,31 @@ affect the numbers.
   refuses a member and another agency, leaves roles untouched, and writes the activity line
 - Members, freelancers, portal clients and other agencies cannot read expenses or run either
   report; a backwards date range is refused
+
+## What 07_phase3_tests.sql covers
+
+Reports, media planning and leave.
+
+**Reports** — the snapshot counts only what falls in the period and excludes internal drafts;
+upcoming is what sits after it; approval rounds and changes-requested are counted; ad spend
+counts only rebilled expenses. The snapshot carries no hours, cost or margin keys, which is
+asserted directly. A sent report cannot be rebuilt, sent twice, or edited; an unbuilt one cannot
+be sent. Freelancers see no reports. The portal shows sent reports only, never drafts, never
+another agency's, and gives no direct table access.
+
+**Media planning** — a mid-month date normalises to the 1st; planned against actual per channel
+per month with overspend positive and underspend negative; a channel planned but unspent shows
+zero actual; a channel spent on but never planned appears with planned = 0; ad spend with no
+channel buckets as `Unattributed`; a non-ad-spend expense is not counted as media spend. Staff
+read, members cannot edit, other agencies see nothing and cannot call the summary.
+
+**Leave** — a request is pending; an overlapping one is refused; more days than the dates cover
+is refused; direct inserts are refused so the rules cannot be bypassed. A member cannot decide
+requests. **The owner cannot approve their own leave.** A decided request cannot be decided
+again. Allowances upsert rather than duplicate; `taken` counts approved only; a pending request
+is reported separately and does not reduce `remaining`; cancelling returns the days. A member
+cannot read everybody's balances but the team calendar is visible to all; another agency sees
+nothing.
 
 ## Why mock `auth`
 
