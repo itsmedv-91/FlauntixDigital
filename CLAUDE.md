@@ -1,4 +1,4 @@
-# Flauntix HQ — agency platform (Phases 1 and 2 done, Phase 3 in progress)
+# Flauntix HQ — agency platform (Phases 1–4 built; see Status for what is blocked)
 
 Internal operating platform for Flauntix Digital (6–8 person digital agency, 4–5 clients), designed multi-tenant so it can later be sold as SaaS to other agencies.
 
@@ -266,7 +266,7 @@ Decisions taken with the user, to build on in this order:
 
 **Phase 2 is complete.** Do not start Phase 3 without being asked.
 
-### Phase 3 (in progress)
+### Phase 3 (complete except the ads integration)
 1. **Profitability — DONE.** `0006_profitability.sql`, `lib/actions/expenses.ts`,
    `app/(app)/profitability/`. See the Database section for the rules that define a margin.
 2. **Meta / Google Ads data — deferred by decision.** Google Ads needs a developer token behind
@@ -286,6 +286,36 @@ Decisions taken with the user, to build on in this order:
 
 **Phase 3 is complete except the ads integration, which is blocked on credentials.**
 
+### Phase 4 (built; two items blocked on accounts, not on code)
+1. **AI assistant — DONE.** `0010_assistant.sql`, `lib/ai.ts`, `lib/assistant-data.ts`,
+   `lib/actions/assistant.ts`, `app/(app)/assistant/`. Read-only, no tools, RLS-scoped
+   snapshot. Inert without `ANTHROPIC_API_KEY`.
+2. **Automation builder — DONE.** `0011_automations.sql`, `lib/actions/automations.ts`,
+   `app/(app)/automations/`. Runs from a button today; hourly if pg_cron is enabled.
+   Not built, deliberately: webhook and outbound-HTTP actions — see the Database section.
+3. **Influencer marketing — DONE.** `0012_influencers_seo.sql`, `lib/actions/influencers.ts`,
+   `app/(app)/influencers/`. Fees book through `expenses`, so the margin stays honest.
+4. **SEO — DONE as far as it can be.** Same migration, `lib/actions/seo.ts`, `app/(app)/seo/`.
+   Keywords and ranking history, entered by hand or pasted. **Rank-tracking integration is
+   blocked:** Semrush, Ahrefs and DataForSEO are all paid and account-gated. The schema is the
+   part that would not change if one were added — one row per keyword per date, unique.
+5. **Mobile — DONE as a PWA.** `app/manifest.ts`, `public/sw.js`, `components/pwa.tsx`,
+   `npm run gen:icons`. **Native apps are out of scope for this repo:** React Native or Swift
+   is a separate codebase, plus two developer accounts and a review process.
+6. **Multi-agency SaaS — plans and limits DONE, billing BLOCKED.** `0013_plans.sql`,
+   `lib/plan.ts`, `app/(app)/settings/plan/`. Seat and client limits are enforced by triggers,
+   and no agency can change its own plan. **Taking money needs a Razorpay account** (registered
+   business, KYC, live key), which cannot be created from a repository. The webhook design is
+   at the bottom of `0013_plans.sql`.
+
+### Blocked on something only a human with an account can do
+- **Ads data** (Meta `ads_read` + business verification; Google Ads developer token).
+- **Rank tracking** (a paid SEO API key).
+- **Billing** (a Razorpay or Stripe account).
+- **Invite emails** (an email provider — Resend, Postmark or Supabase SMTP).
+- **Nothing has ever run against a real Supabase project.** Everything is verified by
+  `npm run typecheck`, `npm run build`, `npm test` and 418 SQL assertions against a local
+  Postgres with a mocked `auth` schema — which is not the same as a click-through.
+
 ### Later phases (do not start without being asked)
-- Phase 4: AI assistant, automation builder, influencer & SEO, mobile apps, multi-agency SaaS launch
 Full feature list: the "Flauntix Digital Platform: Final Feature List" doc.

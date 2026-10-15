@@ -64,7 +64,9 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Other scripts: `npm run typecheck`, `npm run build`, `npm run start`, and `npm test`
+Other scripts: `npm run typecheck`, `npm run build`, `npm run start`, `npm run gen:icons`
+(regenerates the PWA icons; the output is committed, so this is only needed if the brand
+colour changes), and `npm test`
 (the pure-helper tests — GSTIN check digit, amount in words, financial-year and FY-quarter
 dates). The SQL tests live in `supabase/tests/`; see the README there.
 
@@ -267,3 +269,45 @@ Conventions worth knowing before you change anything are in `CLAUDE.md`.
 Supabase `auth` schema and asserts on tenant isolation, role scoping and the approval RPCs —
 no Supabase project or network needed. See `supabase/tests/README.md`. Worth running before
 any schema change reaches a real database, and worth extending whenever you add a policy.
+
+## Installing it on a phone
+
+Flauntix HQ is a PWA, so it installs from the browser — Chrome's "Add to home screen", or
+Safari's Share → Add to Home Screen on iOS. It opens full screen with its own icon.
+
+It is not an offline app and does not pretend to be. The service worker caches only the
+build's static files; every page is fetched live, and when there is no connection you get an
+offline page rather than a stale copy of yesterday's client list. There is no App Store or
+Play Store build: that is a separate codebase and two developer accounts.
+
+## Plans and limits
+
+Running this for your own agency needs nothing here — an agency with no subscription row is
+unmetered, with every module switched on. Limits only start when a subscription row exists,
+which is what signing up another agency would create.
+
+Seat and client limits are enforced in the database by triggers, and no agency can change its
+own plan: `agency_subscription` has no write policy at all, so a plan is set from the Supabase
+SQL editor (or, eventually, by a billing webhook using the service-role key).
+
+**There is no payment integration.** That is a missing account rather than missing code —
+Razorpay needs a registered business, KYC and a live key. The design the webhook would follow
+is written out at the bottom of `supabase/migrations/0013_plans.sql`.
+
+## The AI assistant
+
+`/assistant` answers questions about your own clients, work and numbers. It needs
+`ANTHROPIC_API_KEY`; without one the page explains how to switch it on and nothing else is
+affected.
+
+Two things worth knowing before you turn it on:
+
+- **It is read-only and has no tools.** It is given a snapshot of your data and answers from
+  it; it cannot create, edit or send anything. That is deliberate — the snapshot contains
+  client-supplied text (captions, portal comments), and a model with write access could be
+  steered by a comment.
+- **It sees exactly what the person asking can see,** because the snapshot is built with their
+  own database session. A freelancer's assistant sees a freelancer's data.
+
+Every question and answer is stored. You can read your own threads; owners and admins can read
+anyone's, for the agency's own audit of a paid API. Managers deliberately cannot.
