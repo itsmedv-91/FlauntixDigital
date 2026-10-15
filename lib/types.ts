@@ -505,3 +505,38 @@ export interface ActivityItem {
   meta: Record<string, unknown> | null;
   created_at: string;
 }
+
+export type AutomationTrigger =
+  | 'task_overdue'
+  | 'content_awaiting_client'
+  | 'content_publishing_today'
+  | 'invoice_overdue'
+  | 'contract_renewal_soon'
+  | 'leave_pending';
+export type AutomationAction = 'chat_message' | 'create_task';
+
+export interface AutomationRule {
+  id: string;
+  agency_id: string;
+  name: string;
+  trigger: AutomationTrigger;
+  /** Days. Meaning depends on the trigger — see 0011_automations.sql. */
+  threshold_days: number;
+  client_id: string | null;
+  action: AutomationAction;
+  channel_id: string | null;
+  assignee_id: string | null;
+  active: boolean;
+  last_run_at: string | null;
+  created_at: string;
+}
+
+export interface AutomationEvent {
+  id: string;
+  rule_id: string;
+  dedupe_key: string;
+  entity_type: string;
+  entity_id: string | null;
+  summary: string;
+  created_at: string;
+}

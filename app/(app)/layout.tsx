@@ -37,6 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       ? ([
           { href: '/invoices', label: 'Invoices', icon: 'invoices' },
           { href: '/profitability', label: 'Profitability', icon: 'margin' },
+          // Rules post in channels and open tasks, so managers and above only.
+          { href: '/automations', label: 'Automations', icon: 'automations' },
         ] as NavItem[])
       : []),
     { href: '/time', label: 'Time', icon: 'time' },

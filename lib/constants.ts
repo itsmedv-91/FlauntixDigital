@@ -1,5 +1,7 @@
 import type {
   AssetKind,
+  AutomationAction,
+  AutomationTrigger,
   ClientStatus,
   LeaveStatus,
   MediaPlanStatus,
@@ -198,3 +200,41 @@ export const LEAVE_STATUSES: { value: LeaveStatus; label: string; tone: string }
 export const MANAGER_ROLES: MemberRole[] = ['owner', 'admin', 'manager'];
 export const ADMIN_ROLES: MemberRole[] = ['owner', 'admin'];
 export const STAFF_ROLES: MemberRole[] = ['owner', 'admin', 'manager', 'member'];
+
+/**
+ * The automation triggers, with the wording for the threshold each one uses.
+ * `noun` completes the sentence "Run when …".
+ */
+export const AUTOMATION_TRIGGERS: {
+  value: AutomationTrigger;
+  label: string;
+  threshold: string;
+  minimum: number;
+}[] = [
+  { value: 'task_overdue', label: 'A task goes overdue', threshold: 'Days overdue', minimum: 1 },
+  {
+    value: 'content_awaiting_client',
+    label: 'Content sits with a client',
+    threshold: 'Days with the client',
+    minimum: 1,
+  },
+  {
+    value: 'content_publishing_today',
+    label: 'Content is about to go out',
+    threshold: 'Days ahead (0 = today)',
+    minimum: 0,
+  },
+  { value: 'invoice_overdue', label: 'An invoice goes overdue', threshold: 'Days overdue', minimum: 1 },
+  {
+    value: 'contract_renewal_soon',
+    label: 'A contract comes up for renewal',
+    threshold: 'Days ahead',
+    minimum: 1,
+  },
+  { value: 'leave_pending', label: 'A leave request waits for a decision', threshold: 'Days waiting', minimum: 0 },
+];
+
+export const AUTOMATION_ACTIONS: { value: AutomationAction; label: string }[] = [
+  { value: 'chat_message', label: 'Post in a chat channel' },
+  { value: 'create_task', label: 'Open a task' },
+];

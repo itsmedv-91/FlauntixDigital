@@ -23,12 +23,19 @@ $PG -f supabase/migrations/0007_reports.sql
 $PG -f supabase/migrations/0008_media_plans.sql
 $PG -f supabase/migrations/0009_hr_leave.sql
 $PG -f supabase/migrations/0010_assistant.sql
+$PG -f supabase/migrations/0011_automations.sql
 
 # 3. the grants Supabase gives the `authenticated` role, so RLS is what bites
 $PG -c "grant usage on schema public to authenticated, anon;
         grant all on all tables in schema public to authenticated;
         grant all on all sequences in schema public to authenticated;
         grant execute on all functions in schema public to authenticated;"
+
+# ...then take back the two the migrations deliberately keep out of reach. The
+# blanket grant above is broader than Supabase's own default privileges, and
+# 0011 revokes these by name — re-granting them would hide a real check.
+$PG -c "revoke all on function public.run_all_automations() from authenticated;
+        revoke all on function public.run_automations_core(uuid) from authenticated;"
 
 # 4. the assertions
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/02_content_tests.sql
@@ -38,6 +45,7 @@ psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/05_assets_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/06_profitability_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/07_phase3_tests.sql
 psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/08_assistant_tests.sql
+psql -h 127.0.0.1 -p 5433 -U postgres -q -f supabase/tests/09_automation_tests.sql
 ```
 
 Every line should read `PASS`. The scripts are re-runnable: the test file clears
@@ -212,3 +220,19 @@ can be is who reads whose questions, and whether the transcript holds:
 - `assistant_messages` has no update policy, so a turn cannot be rewritten
 - A turn whose `agency_id` does not match its thread is refused
 - The other agency sees nothing, and cannot open a thread in this one
+
+## What 09_automation_tests.sql covers
+
+- Only a manager can create a rule or press “Run now”; a member is refused both
+- A 3-day threshold acts on the tasks 5 and 9 days overdue, and ignores the one
+  2 days overdue, the finished one and the one not yet due
+- **The second run acts on nothing** — the `automation_events` dedupe key is
+  what stops an hourly sweep repeating the same reminder forever
+- A paused rule does nothing; `last_run_at` is still stamped
+- A client-scoped rule ignores other clients' work
+- A `create_task` rule opens the task, assigns it, and does not repeat it
+- The other agency sees no rules or events and cannot run ours
+- `automation_events` is append-only: no update, no delete, and an event cannot
+  be forged through the API
+- `run_all_automations()` and `run_automations_core()` are not callable from the
+  API at all — the cron sweep has no caller to authorise
